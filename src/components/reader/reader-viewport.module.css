@@ -1,0 +1,14 @@
+.viewport { position: relative; margin-inline: auto; overflow-anchor: none; transform-origin: 0 0; }
+.page { position: absolute; overflow: hidden; background: white; box-shadow: 0 3px 18px rgb(0 0 0 / 10%); }
+.clipped, .raster { position: absolute; transform-origin: 0 0; }
+.raster { top: 0; left: 0; }
+.raster :global(.react-pdf__Page) { min-height: 0; }
+.raster :global(.react-pdf__Page__canvas) { max-width: none; }
+.tile { position: absolute; z-index: 1; pointer-events: none; }
+.raster :global(.textLayer) { z-index: 2; }
+.error { position: absolute; z-index: 4; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 180px; padding: 16px; background: var(--background); color: var(--foreground); font-size: 14px; text-align: center; }
+.status { position: sticky; z-index: 5; top: 16px; width: fit-content; max-width: min(100%, 280px); margin-inline: auto; padding: 6px 12px; border-radius: 6px; background: var(--background); color: var(--foreground); box-shadow: 0 2px 8px rgb(0 0 0 / 12%); font-size: 12px; pointer-events: none; }
+:global([data-paper="dimmed"]) .page canvas { filter: brightness(0.78); }
+:global([data-paper="sepia"]) .page canvas { filter: sepia(0.24) brightness(0.97); }
+:global([data-paper="dark"]) .page { background: #000; }
+:global([data-paper="dark"]) .page canvas { filter: none; }

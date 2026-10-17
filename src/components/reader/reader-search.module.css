@@ -1,0 +1,38 @@
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.inputGroup { display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 0; }
+.inputGroup label { font-size: 13px; font-weight: 550; }
+.inputGroup input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 16px;
+  caret-color: var(--reader-accent);
+}
+.inputGroup input::placeholder { color: var(--muted-foreground); opacity: 1; }
+.inputGroup input:focus-visible, .result:focus-visible { outline: 2px solid var(--reader-accent); outline-offset: -2px; }
+.status { padding: 12px 16px; color: var(--muted-foreground); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.status p + p { margin-top: 8px; }
+.results { flex: 1; min-height: 0; margin: 0; padding: 0 0 16px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; list-style: none; }
+.result { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; min-height: 44px; padding: 12px 16px; border: 0; background: transparent; color: var(--foreground); text-align: left; cursor: pointer; }
+.result:hover { background: var(--muted); }
+.result[aria-current] { background: color-mix(in srgb, var(--reader-accent) 9%, var(--background)); }
+.resultHeading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+.resultHeading > :first-child { font-weight: 550; }
+.resultHeading > :last-child { color: var(--muted-foreground); }
+.snippet { min-width: 0; max-width: 100%; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.snippet mark { background: #f5df85; color: #29230d; border-radius: 2px; }
+.panel ::selection { background: color-mix(in srgb, var(--reader-accent) 28%, transparent); }
