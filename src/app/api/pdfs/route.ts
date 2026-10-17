@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deletePdf, listPdfs, savePdf } from "@/lib/pdf-store";
+import { deletePdf, listPdfs, saveCover, savePdf } from "@/lib/pdf-store";
 
 export type SkippedFile = { name: string; reason: string };
 
@@ -33,6 +33,17 @@ export async function POST(request: Request) {
       if (entry instanceof File) files.push(entry);
     }
 
+    const covers: File[] = [];
+    for (const key of ["cover", "image", "thumbnail", "coverImage"]) {
+      const value = formData.get(key);
+      if (value instanceof File) covers.push(value);
+    }
+    for (const key of ["covers", "images", "thumbnails"]) {
+      for (const entry of formData.getAll(key)) {
+        if (entry instanceof File) covers.push(entry);
+      }
+    }
+
     if (files.length === 0) {
       return NextResponse.json(
         { error: "No PDF file provided", items: [], skipped: [] },
@@ -43,6 +54,7 @@ export async function POST(request: Request) {
     // Every file gets its own result: one rejected file must not hide the ones already saved.
     const items = [];
     const skipped: SkippedFile[] = [];
+    let coverCursor = 0;
     for (const file of files) {
       const name = file.name || "Unnamed file";
       if (!isPdf(file)) {
@@ -50,7 +62,17 @@ export async function POST(request: Request) {
         continue;
       }
       try {
-        items.push(await savePdf(file));
+        const saved = await savePdf(file);
+        let finalItem = saved;
+        if (covers.length > 0) {
+          const cover = covers.length === 1 ? covers[0] : covers[coverCursor];
+          coverCursor += 1;
+          if (cover) {
+            const withCover = await saveCover(saved.id, cover).catch(() => null);
+            if (withCover) finalItem = withCover;
+          }
+        }
+        items.push(finalItem);
       } catch (error) {
         skipped.push({ name, reason: saveFailureReason(error) });
       }
