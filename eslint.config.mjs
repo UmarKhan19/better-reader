@@ -1,10 +1,19 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import { plugin as shadcn } from "@shadcn/lint";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // @shadcn/lint: agent-first Tailwind design-system rules.
+  {
+    files: ["**/*.{js,jsx,ts,tsx}"],
+    plugins: { shadcn },
+    rules: {
+      "shadcn/no-restyle": ["error", { allow: ["layout"] }],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
@@ -12,6 +21,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "public/**",
   ]),
 ]);
 
