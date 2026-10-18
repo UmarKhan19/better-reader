@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScheduledPdfPage, type ScheduledPdfPageProps } from "./reader-render-queue";
 import { ReaderRasterBudget, rasterPixels, type RasterReservation } from "./reader-raster-budget";
 import { readerRenderQueue, type RenderPriority } from "./reader-render-scheduler";
-import { renderedInkCrop } from "./reader-crop";
+import { renderedInkCrop, paperColor } from "./reader-crop";
 import { FULL_PAGE, type CropBox, type PageBox } from "./reader-geometry";
 import { finishRaster, requestRaster, type RasterFrame, type RasterState } from "./reader-render-state";
 import { visibleTiles, type ReaderTile, type VisibleRect } from "./reader-tiles";
@@ -69,7 +69,7 @@ function Tile({ pdf, pageNumber, fullWidth, tile, pageColors }: { pdf: PDFDocume
     style={{ left: tile.x, top: tile.y, width: tile.width, height: tile.height, visibility: ready ? "visible" : "hidden" }} />;
 }
 
-async function canvasCrop(canvas: HTMLCanvasElement, page: PDFPageProxy): Promise<CropBox> {
+async function canvasCrop(canvas: HTMLCanvasElement, page: PDFPageProxy, paperHex?: string | null): Promise<CropBox> {
   let sample: HTMLCanvasElement | undefined;
   try {
     const [annotations, operators] = await Promise.all([page.getAnnotations({ intent: "display" }), page.getOperatorList()]);
@@ -93,7 +93,7 @@ async function canvasCrop(canvas: HTMLCanvasElement, page: PDFPageProxy): Promis
     const context = sample.getContext("2d", { willReadFrequently: true });
     if (!context) return FULL_PAGE;
     context.drawImage(canvas, 0, 0, sample.width, sample.height);
-    return renderedInkCrop(context.getImageData(0, 0, sample.width, sample.height).data, sample.width, sample.height, boxes, hasImages);
+    return renderedInkCrop(context.getImageData(0, 0, sample.width, sample.height).data, sample.width, sample.height, boxes, hasImages, paperColor(paperHex));
   } catch { return FULL_PAGE; }
   finally { if (sample) { sample.width = 0; sample.height = 0; } }
 }
@@ -131,11 +131,11 @@ export const ReaderPageSurface = memo(function ReaderPageSurface({ pdf, box, rat
     const canvas = canvases.current.get(frames.shown.key);
     if (!canvas) return;
     let cancelled = false;
-    void canvasCrop(canvas, sourcePage.current).then((result) => {
+    void canvasCrop(canvas, sourcePage.current, pageColors?.background).then((result) => {
       if (!cancelled && alive.current) onCrop(box.page, result);
     });
     return () => { cancelled = true; };
-  }, [crop, frames.shown, box.page, onCrop]);
+  }, [crop, frames.shown, box.page, onCrop, pageColors?.background]);
   const storeCanvas = useCallback((key: string, canvas: HTMLCanvasElement | null) => {
     if (canvas) canvases.current.set(key, canvas); else canvases.current.delete(key);
   }, []);

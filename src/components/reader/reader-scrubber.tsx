@@ -5,7 +5,8 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import { BookOpen } from "lucide-react";
 import { ScheduledPdfPage } from "./reader-render-queue";
 import { readingProgress } from "./reader-state";
-import { beginScrub, chapterMarkers, finishScrub, previewScrub, scrubberChapter, type ScrubSession } from "./reader-scrubber-state";
+import { beginScrub, chapterMarkers, finishScrub, previewScrub, type ScrubSession } from "./reader-scrubber-state";
+import { activeChapter } from "./reader-state";
 import type { OutlineEntry } from "./reader-sidebar";
 import styles from "./reader-scrubber.module.css";
 
@@ -27,7 +28,7 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
   const shown = draft ?? page;
   const seekProgress = readingProgress({ page: shown, offset: 0 }, total);
   const shownProgress = draft === null ? progress : seekProgress;
-  const chapter = scrubberChapter(outline, shown);
+  const chapter = activeChapter(outline, shown)?.title ?? null;
   const markers = useMemo(() => chapterMarkers(outline, total), [outline, total]);
 
   useEffect(() => {

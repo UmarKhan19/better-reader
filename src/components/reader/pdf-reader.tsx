@@ -12,16 +12,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/components/theme";
+import { THEME_STORAGE_KEY, useTheme, writeTheme } from "@/components/theme";
 import { KeyboardShortcuts, PageControls, RadioChoices, ReaderDialog } from "./reader-controls";
 import { ReaderViewport } from "./reader-viewport";
 import { optionsForPdfSize } from "./reader-load-options";
 import { ReaderSearchPanel, useReaderSearch } from "./reader-search";
 import { ReaderScrubber } from "./reader-scrubber";
-import { activeChapter, ReaderSidebar, useReaderOutline, type SidebarTab } from "./reader-sidebar";
+import { ReaderSidebar, useReaderOutline, type SidebarTab } from "./reader-sidebar";
 import {
-  clampPage, clampZoom, createProgressWriter, initialNavigation, parseBookmarks, parsePreferences, parseReadingLocation,
-  paperPageColors, readerNavigationReducer, readingProgress, readStorage, setStorageBlocked, storageBlockedSnapshot, storageKey,
+  activeChapter,
+  clampPage, clampZoom, createProgressWriter, initialNavigation, markStorageResult, parseBookmarks, parsePreferences, parseReadingLocation,
+  paperPageColors, readerNavigationReducer, readingProgress, readStorage, storageBlockedSnapshot, storageKey,
   subscribeStorageBlocked, writeStorage,
   type ReaderLayout, type ReaderPreferences, type ReadingLocation, type Size, type ViewMode,
 } from "./reader-state";
@@ -215,11 +216,14 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
         page: reading.location.page, offset: reading.location.offset, numPages: total,
       }));
     }
-    setStorageBlocked(!saved.every(Boolean));
+    // A retry writes every value that can fail; each key then clears only its own failure.
+    const themeSaved = writeTheme(theme);
+    markStorageResult(THEME_STORAGE_KEY, themeSaved);
+    saved.push(themeSaved);
     if (saved.every(Boolean)) {
       showFeedback("Browser storage works again. Your place and bookmarks will be saved on this device.");
     }
-  }, [id, preferences, bookmarks, total, reading.location, showFeedback]);
+  }, [id, preferences, bookmarks, total, reading.location, showFeedback, theme]);
 
   const onGestureZoom = useCallback((zoom: number) => {
     updatePreferences({ viewMode: "custom", zoom: clampZoom(zoom) });
@@ -499,7 +503,7 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
           </div>
           <div className={styles.settingsSection}>
             <RadioChoices legend="Interface theme" value={theme}
-              onChange={(value) => { if (!setTheme(value)) setStorageBlocked(true); }}
+              onChange={(value) => { markStorageResult(THEME_STORAGE_KEY, setTheme(value)); }}
               options={[{ value: "system", label: "System", icon: <Laptop /> }, { value: "light", label: "Light", icon: <Sun /> }, { value: "dark", label: "Dark", icon: <Moon /> }]} />
             <p className={styles.settingsNote}>The theme applies to your library and every book.{storageBlocked && " It won't survive a reload until browser storage works again."}</p>
             <RadioChoices legend="Paper" presentation="paper" value={preferences.paper} onChange={(paper) => updatePreferences({ paper })}

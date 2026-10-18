@@ -6,7 +6,7 @@ import { Tabs } from "@base-ui/react/tabs";
 import { Bookmark, Grid2X2, List, Search, Trash2 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Button } from "@/components/ui/button";
-import { THUMBNAIL_ROW_HEIGHT, thumbnailWindow } from "./reader-state";
+import { THUMBNAIL_ROW_HEIGHT, thumbnailWindow, activeChapter } from "./reader-state";
 import styles from "./reader.module.css";
 
 export type SidebarTab = "contents" | "pages" | "bookmarks" | "search";
@@ -70,13 +70,6 @@ export function useReaderOutline(pdf: PDFDocumentProxy | null, enabled = true) {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [pdf, enabled]);
   return resolved?.pdf === pdf && enabled ? resolved.outline : null;
-}
-
-export function activeChapter(outline: OutlineEntry[] | null, pageNumber: number) {
-  return outline?.reduce<OutlineEntry | null>((active, entry) =>
-    entry.page !== null && entry.page <= pageNumber &&
-      (active?.page == null || entry.page >= active.page) ? entry : active,
-  null) ?? null;
 }
 
 const Thumbnail = memo(function Thumbnail({

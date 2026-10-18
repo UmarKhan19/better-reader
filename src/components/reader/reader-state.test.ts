@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_PREFERENCES, EMPTY_PAGE_CACHE, THUMBNAIL_ROW_HEIGHT,
-  clampPage, clampZoom, pageCacheReducer, pageSize, parseBookmarks,
-  parsePreferences, parseProgress, rasterRatio, readStorage, storageBlockedSnapshot, storageKey,
+  DEFAULT_PREFERENCES, THUMBNAIL_ROW_HEIGHT,
+  clampPage, clampZoom, pageSize, parseBookmarks,
+  parsePreferences, parseProgress, readStorage, storageBlockedSnapshot, storageKey,
   subscribeStorageBlocked, thumbnailWindow, writeStorage, clampOffset, createProgressWriter, initialNavigation,
   LOCATION_HISTORY_LIMIT, parseReadingLocation, readerNavigationReducer, readingProgress,
-  type RenderSpec, type SavedReadingProgress,
+  type SavedReadingProgress,
 } from "./reader-state";
 
 test("page numbers stay finite and within the document", () => {
@@ -80,15 +80,6 @@ test("actual size ignores stale custom zoom; custom size uses it", () => {
   assert.ok(pageSize(natural, { width: 0, height: 0 }, "fit-page", 1).height >= 1);
 });
 
-test("canvas allocation stays under 3 MP even at high zoom or device pixel ratio", () => {
-  for (const size of [{ width: 350, height: 500 }, { width: 2400, height: 3600 }, { width: 30000, height: 2000 }]) {
-    const dpr = rasterRatio(size, 4);
-    assert.ok(dpr <= 2);
-    assert.ok(size.width * size.height * dpr * dpr <= 3_000_001);
-    assert.ok(Math.max(size.width, size.height) * dpr <= 16384);
-  }
-});
-
 test("thumbnail virtualization only mounts the viewport and a bounded buffer", () => {
   for (const total of [1, 20, 419, 10000]) {
     for (const top of [0, 500, 12000, Math.ceil(total / 2) * THUMBNAIL_ROW_HEIGHT - 700]) {
@@ -101,67 +92,6 @@ test("thumbnail virtualization only mounts the viewport and a bounded buffer", (
   }
   assert.deepEqual(thumbnailWindow(0, 0, 700), { start: 0, end: 0, rows: 0 });
   assert.equal(thumbnailWindow(419, -300, 700).start, 0);
-});
-
-function spec(page: number, generation = "fit-width:900"): RenderSpec {
-  return { page, generation, key: `${page}:${generation}`, width: 900, height: 1200, pixelRatio: 1 };
-}
-
-test("the previous readable page remains visible until its replacement finishes", () => {
-  let state = pageCacheReducer(EMPTY_PAGE_CACHE, { type: "request", spec: spec(1) });
-  state = pageCacheReducer(state, { type: "ready", key: spec(1).key });
-  state = pageCacheReducer(state, { type: "request", spec: spec(2) });
-  assert.equal(state.shown?.page, 1);
-  state = pageCacheReducer(state, { type: "ready", key: spec(2).key });
-  assert.equal(state.shown?.page, 2);
-});
-
-test("ready adjacent pages are reused immediately", () => {
-  let state = pageCacheReducer(EMPTY_PAGE_CACHE, { type: "request", spec: spec(10) });
-  state = pageCacheReducer(state, { type: "ready", key: spec(10).key });
-  state = pageCacheReducer(state, { type: "prefetch", targetKey: spec(10).key, specs: [spec(9), spec(11)] });
-  state = pageCacheReducer(state, { type: "ready", key: spec(11).key });
-  assert.equal(state.shown?.page, 10);
-  state = pageCacheReducer(state, { type: "request", spec: spec(11) });
-  assert.equal(state.shown?.page, 11);
-});
-
-test("late or cancelled page renders and prefetch tasks cannot replace the requested page", () => {
-  let state = pageCacheReducer(EMPTY_PAGE_CACHE, { type: "request", spec: spec(1) });
-  state = pageCacheReducer(state, { type: "ready", key: spec(1).key });
-  state = pageCacheReducer(state, { type: "request", spec: spec(300) });
-  state = pageCacheReducer(state, { type: "ready", key: spec(2).key });
-  state = pageCacheReducer(state, { type: "prefetch", targetKey: spec(1).key, specs: [spec(2)] });
-  assert.equal(state.target?.page, 300);
-  assert.equal(state.shown?.page, 1);
-  assert.ok(!state.entries.some((entry) => entry.spec.page === 2));
-});
-
-test("zoom replacement keeps the old canvas; cache size stays bounded across jumps and zooms", () => {
-  let state = EMPTY_PAGE_CACHE;
-  for (let i = 1; i < 300; i++) {
-    const target = spec(i % 3 ? i : 419 - i, `zoom:${i % 4}`);
-    const previous = state.shown;
-    state = pageCacheReducer(state, { type: "request", spec: target });
-    assert.equal(state.shown, previous);
-    assert.ok(state.entries.length <= 4);
-    state = pageCacheReducer(state, { type: "ready", key: target.key });
-    state = pageCacheReducer(state, { type: "prefetch", targetKey: target.key,
-      specs: [spec(target.page - 1, target.generation), spec(target.page + 1, target.generation)] });
-    assert.ok(state.entries.length <= 3);
-  }
-});
-
-test("failed prefetched pages expose recovery when navigated to", () => {
-  let state = pageCacheReducer(EMPTY_PAGE_CACHE, { type: "request", spec: spec(1) });
-  state = pageCacheReducer(state, { type: "ready", key: spec(1).key });
-  state = pageCacheReducer(state, { type: "prefetch", targetKey: spec(1).key, specs: [spec(2)] });
-  state = pageCacheReducer(state, { type: "error", key: spec(2).key });
-  assert.equal(state.error, false);
-  state = pageCacheReducer(state, { type: "request", spec: spec(2) });
-  assert.equal(state.error, true);
-  state = pageCacheReducer(state, { type: "request", spec: spec(2, "retry") });
-  assert.equal(state.error, false);
 });
 
 test("reader-state migrates old settings to continuous without losing their paper mode or zoom", () => {
@@ -266,28 +196,33 @@ test("reader-state progress writer debounces scroll bursts and flushes the lates
   assert.equal(written.length, 2);
 });
 
-test("writeStorage reports the save outcome and storage health follows it", () => {
+test("writeStorage reports the save outcome and keeps each key's failure separate", () => {
   const globalScope = globalThis as unknown as { window?: unknown };
   const store = new Map<string, string>();
-  const local = { setItem: (key: string, value: string) => { store.set(key, value); } };
+  let failing: string | null = null;
+  const local = { setItem: (key: string, value: string) => { if (key === failing) throw new Error("QuotaExceededError"); store.set(key, value); } };
   globalScope.window = { localStorage: local };
   let notifications = 0;
   const unsubscribe = subscribeStorageBlocked(() => { notifications += 1; });
   try {
     assert.equal(storageBlockedSnapshot(), false);
-    assert.equal(writeStorage("better-kindle:test", { page: 3 }), true);
-    assert.equal(store.get("better-kindle:test"), '{"page":3}');
-    assert.equal(storageBlockedSnapshot(), false);
+    assert.equal(writeStorage("better-kindle:bookmarks", [1]), true);
+    assert.equal(store.get("better-kindle:bookmarks"), "[1]");
     assert.equal(notifications, 0);
-    local.setItem = () => { throw new Error("QuotaExceededError"); };
-    assert.equal(writeStorage("better-kindle:test", { page: 4 }), false);
+    failing = "better-kindle:bookmarks";
+    assert.equal(writeStorage("better-kindle:bookmarks", [2]), false);
     assert.equal(storageBlockedSnapshot(), true);
     assert.equal(notifications, 1);
-    assert.equal(store.get("better-kindle:test"), '{"page":3}');
-    local.setItem = (key: string, value: string) => { store.set(key, value); };
-    assert.equal(writeStorage("better-kindle:test", { page: 5 }), true);
+    assert.equal(store.get("better-kindle:bookmarks"), "[1]");
+    // A later save of a different key must not hide the bookmarks failure.
+    failing = null;
+    assert.equal(writeStorage("better-kindle:progress", { page: 3 }), true);
+    assert.equal(storageBlockedSnapshot(), true);
+    assert.equal(notifications, 1);
+    assert.equal(writeStorage("better-kindle:bookmarks", [3]), true);
     assert.equal(storageBlockedSnapshot(), false);
     assert.equal(notifications, 2);
+    assert.equal(store.get("better-kindle:bookmarks"), "[3]");
   } finally {
     unsubscribe();
     delete globalScope.window;

@@ -16,11 +16,6 @@ export function finishScrub(session: ScrubSession, accepted: boolean) {
   return { session: { ...session, active: false }, page: session.active && accepted ? session.draft : null };
 }
 
-export function scrubberChapter(outline: readonly Chapter[] | null, page: number) {
-  return outline?.reduce<Chapter | null>((active, entry) => entry.page !== null && entry.page <= page &&
-    (active?.page == null || entry.page >= active.page) ? entry : active, null)?.title ?? null;
-}
-
 export function chapterMarkers(outline: readonly Chapter[] | null, total: number) {
   const pages = [...new Set(outline?.map((entry) => entry.page)
     .filter((page): page is number => page !== null && page >= 1 && page <= total) ?? [])].sort((a, b) => a - b);

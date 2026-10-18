@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderedInkCrop } from "./reader-crop";
+import { paperColor, renderedInkCrop } from "./reader-crop";
 import { FULL_PAGE } from "./reader-geometry";
 
 function paper() { const pixels = new Uint8ClampedArray(100 * 100 * 4); pixels.fill(255); return pixels; }
@@ -10,6 +10,14 @@ function ink(pixels: Uint8ClampedArray, x0: number, y0: number, x1: number, y1: 
   }
 }
 function text() { const pixels = paper(); for (let y = 20; y < 80; y += 5) ink(pixels, 20, y, 80, y + 1); return pixels; }
+function darkText() {
+  const pixels = new Uint8ClampedArray(100 * 100 * 4);
+  for (let i = 3; i < pixels.length; i += 4) pixels[i] = 255;
+  for (let y = 20; y < 80; y += 5) for (let x = 20; x < 80; x++) {
+    const i = (y * 100 + x) * 4; pixels[i] = pixels[i + 1] = pixels[i + 2] = 255;
+  }
+  return pixels;
+}
 
 test("rendered white margins get padded conservative ink bounds", () => {
   const crop = renderedInkCrop(text(), 100, 100);
@@ -37,4 +45,18 @@ test("annotations outside ink remain inside presentation crop", () => {
 });
 test("transparent backgrounds do not count as dark ink", () => {
   assert.deepEqual(renderedInkCrop(new Uint8ClampedArray(100 * 100 * 4), 100, 100), FULL_PAGE);
+});
+test("dark paper crops on its white text instead of its black background", () => {
+  const crop = renderedInkCrop(darkText(), 100, 100, [], false, paperColor("#000000"));
+  assert.ok(crop.x > 0.1 && crop.x < 0.2);
+  assert.ok(crop.y > 0.1 && crop.y < 0.2);
+  assert.ok(crop.x + crop.width > 0.8);
+  // Read as white paper, the same pixels are one dense ink block and keep the full page.
+  assert.deepEqual(renderedInkCrop(darkText(), 100, 100), FULL_PAGE);
+});
+test("paper colours parse only as #rrggbb and default to white", () => {
+  assert.deepEqual(paperColor(undefined), { r: 255, g: 255, b: 255 });
+  assert.deepEqual(paperColor("#FFFFFF"), { r: 255, g: 255, b: 255 });
+  assert.deepEqual(paperColor("#000000"), { r: 0, g: 0, b: 0 });
+  assert.deepEqual(paperColor("black"), { r: 255, g: 255, b: 255 });
 });

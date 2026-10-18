@@ -38,8 +38,10 @@ export function readStorage(key: string): string | null {
   }
 }
 
-// Storage health is an external store: every write records whether the browser kept the
-// value, so screens can show an honest warning without effect-driven setState.
+// Storage health is an external store: every write records whether the browser kept
+// the value, keyed by that value's own key. A successful write of one key never
+// hides the failure of another.
+const failedStorageKeys = new Set<string>();
 let storageBlocked = false;
 const storageBlockedListeners = new Set<() => void>();
 
@@ -54,7 +56,10 @@ export function subscribeStorageBlocked(listener: () => void) {
   };
 }
 
-export function setStorageBlocked(blocked: boolean) {
+export function markStorageResult(key: string, saved: boolean) {
+  if (saved) failedStorageKeys.delete(key);
+  else failedStorageKeys.add(key);
+  const blocked = failedStorageKeys.size > 0;
   if (storageBlocked === blocked) return;
   storageBlocked = blocked;
   for (const listener of storageBlockedListeners) listener();
@@ -62,15 +67,15 @@ export function setStorageBlocked(blocked: boolean) {
 
 /** Returns false when the browser refuses to keep the value, so callers can say saving failed. */
 export function writeStorage(key: string, value: unknown): boolean {
+  let saved = false;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
-    setStorageBlocked(false);
-    return true;
+    saved = true;
   } catch {
     // Reading still works when browser storage is unavailable or full.
-    setStorageBlocked(true);
-    return false;
   }
+  markStorageResult(key, saved);
+  return saved;
 }
 
 function parse(raw: string | null): unknown {
@@ -215,6 +220,14 @@ export function parseBookmarks(raw: string | null, total = Number.MAX_SAFE_INTEG
 
 export type Size = { width: number; height: number };
 
+/** The last outline entry that starts at or before the page; shared by the sidebar and the scrubber. */
+export function activeChapter<T extends { page: number | null }>(outline: readonly T[] | null, pageNumber: number): T | null {
+  return outline?.reduce<T | null>((active, entry) =>
+    entry.page !== null && entry.page <= pageNumber &&
+      (active?.page == null || entry.page >= active.page) ? entry : active,
+  null) ?? null;
+}
+
 export function pageSize(natural: Size, available: Size, mode: ViewMode, zoom: number): Size {
   const width = Math.max(1, Math.min(1120, available.width));
   const height = Math.max(1, available.height);
@@ -228,16 +241,6 @@ export function pageSize(natural: Size, available: Size, mode: ViewMode, zoom: n
   return { width: roundedWidth, height: Math.max(1, Math.floor(roundedWidth * ratio)) };
 }
 
-// Each canvas has a 3 MP budget, including on high-DPI screens and at large zoom.
-export function rasterRatio(size: Size, deviceRatio: number) {
-  return Math.min(
-    Math.max(1, deviceRatio || 1),
-    2,
-    Math.sqrt(3_000_000 / (size.width * size.height)),
-    16384 / Math.max(size.width, size.height),
-  );
-}
-
 export const THUMBNAIL_ROW_HEIGHT = 184;
 
 export function thumbnailWindow(totalPages: number, scrollTop: number, height: number) {
@@ -248,74 +251,3 @@ export function thumbnailWindow(totalPages: number, scrollTop: number, height: n
   return { start, end, rows };
 }
 
-export type RenderSpec = Size & {
-  key: string;
-  generation: string;
-  page: number;
-  pixelRatio: number;
-};
-
-type CacheEntry = { spec: RenderSpec; ready: boolean; failed?: boolean };
-export type PageCache = {
-  target: RenderSpec | null;
-  shown: RenderSpec | null;
-  entries: CacheEntry[];
-  error: boolean;
-};
-export const EMPTY_PAGE_CACHE: PageCache = {
-  target: null, shown: null, entries: [], error: false,
-};
-export type CacheAction =
-  | { type: "request"; spec: RenderSpec }
-  | { type: "ready"; key: string }
-  | { type: "prefetch"; targetKey: string; specs: RenderSpec[] }
-  | { type: "error"; key: string };
-
-export function pageCacheReducer(state: PageCache, action: CacheAction): PageCache {
-  if (action.type === "request") {
-    const target = action.spec;
-    if (target.key === state.target?.key) return state;
-    const cached = state.entries.find((entry) => entry.spec.key === target.key);
-    const shown = cached?.ready ? target : state.shown;
-    const keys = new Set<string>();
-    const entries = [
-      cached ?? { spec: target, ready: false },
-      ...state.entries.filter((entry) =>
-        entry.spec.key === shown?.key ||
-        (entry.spec.generation === target.generation && Math.abs(entry.spec.page - target.page) <= 1),
-      ),
-    ].filter((entry) => {
-      if (keys.has(entry.spec.key)) return false;
-      keys.add(entry.spec.key);
-      return true;
-    }).slice(0, 4);
-    return { target, shown, entries, error: cached?.failed ?? false };
-  }
-  if (action.type === "ready") {
-    if (!state.entries.some((entry) => entry.spec.key === action.key)) return state;
-    const shown = action.key === state.target?.key ? state.target : state.shown;
-    const entries = state.entries
-      .map((entry) => entry.spec.key === action.key ? { ...entry, ready: true } : entry)
-      .filter((entry) => entry.spec.key === shown?.key || entry.spec.key === state.target?.key ||
-        (entry.spec.generation === state.target?.generation &&
-          Math.abs(entry.spec.page - (state.target?.page ?? 0)) <= 1));
-    return { ...state, shown, entries };
-  }
-  if (action.type === "prefetch") {
-    if (action.targetKey !== state.target?.key || state.shown?.key !== action.targetKey) return state;
-    const specs = [state.target, ...action.specs.filter((spec) =>
-      spec.generation === state.target?.generation && Math.abs(spec.page - state.target.page) === 1,
-    )].slice(0, 3);
-    return {
-      ...state,
-      entries: specs.map((spec) =>
-        state.entries.find((entry) => entry.spec.key === spec.key) ?? { spec, ready: false },
-      ),
-    };
-  }
-  return {
-    ...state,
-    entries: state.entries.map((entry) => entry.spec.key === action.key ? { ...entry, failed: true } : entry),
-    error: action.key === state.target?.key ? true : state.error,
-  };
-}

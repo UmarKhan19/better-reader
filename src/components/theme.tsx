@@ -5,8 +5,9 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   applyTheme, readTheme, resolveDark, subscribeSystemTheme, subscribeTheme, systemPrefersDark,
-  writeTheme, type Theme,
+  THEME_STORAGE_KEY, writeTheme, type Theme,
 } from "@/lib/theme";
+import { markStorageResult } from "./reader/reader-state";
 
 export { THEME_STORAGE_KEY, readTheme, writeTheme, type Theme } from "@/lib/theme";
 
@@ -42,6 +43,7 @@ export function ThemeSelect({
           type="button"
           onClick={() => {
             const saved = setTheme(value);
+            markStorageResult(THEME_STORAGE_KEY, saved);
             if (!saved) onStorageFailure?.(value);
           }}
           aria-pressed={theme === value}
