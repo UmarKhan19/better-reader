@@ -1,8 +1,9 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { ReaderHighlightText, ReaderTextContext } from "./reader-text-renderer";
 
 export type SearchResult = { page: number; snippet: string; matches: number };
-export type SearchTextContext = { pageNumber: number; itemIndex: number };
-export type SearchHighlight = (text: string, context?: SearchTextContext) => string;
+export type SearchTextContext = ReaderTextContext;
+export type SearchHighlight = ReaderHighlightText;
 export type ReaderSearchState = {
   results: SearchResult[];
   scanned: number;
@@ -263,15 +264,17 @@ export class ReaderSearchController {
     if (!pdf || !current()) return;
     const scan = this.scanState;
     const { results, highlights, failedPages } = scan;
+    // One stable highlighter per query/generation; reads the mutable highlights map by reference.
+    const highlightText: SearchHighlight = (text, context) => {
+      if (highlightGeneration !== this.highlightGeneration) return escapeSearchHtml(text);
+      if (!context) return highlightSearchText(text, query);
+      const item = highlights.get(context.pageNumber)?.get(context.itemIndex);
+      return item?.text === text ? markRanges(text, item.ranges) : escapeSearchHtml(text);
+    };
     const snapshot = (searching: boolean): ReaderSearchState => ({
       results: [...results], scanned: scan.scanned, total: pdf.numPages, searching, truncated: scan.truncated, activeQuery: query,
       error: scan.failed ? `Could not read text on ${scan.failed} ${scan.failed === 1 ? "page" : "pages"}. Results may be incomplete. Close and reopen Search to retry.` : null,
-      highlightText: (text, context) => {
-        if (highlightGeneration !== this.highlightGeneration) return escapeSearchHtml(text);
-        if (!context) return highlightSearchText(text, query);
-        const item = highlights.get(context.pageNumber)?.get(context.itemIndex);
-        return item?.text === text ? markRanges(text, item.ranges) : escapeSearchHtml(text);
-      },
+      highlightText,
     });
     try {
       // Resume unfinished extraction; already-published matches stay mounted while Search is paused or reopened.

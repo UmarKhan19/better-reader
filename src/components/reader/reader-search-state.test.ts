@@ -407,3 +407,20 @@ test("reader-search bounds retry metadata as well as results for unreadable PDFs
   assert.ok(state.error!.includes(`${total} pages`));
   assert.equal(state.truncated, true);
 });
+
+test("highlightText reference stays stable across per-page progress publishes", async () => {
+  const scheduler = schedule();
+  const controller = new ReaderSearchController(document(["needle", "needle"]), scheduler);
+  const refs: ((text: string, context?: { pageNumber: number; itemIndex: number }) => string)[] = [];
+  controller.subscribe(() => { refs.push(controller.getSnapshot().highlightText); });
+  controller.search("needle", true);
+  scheduler.flush();
+  await until(() => !controller.getSnapshot().searching);
+  assert.ok(refs.length >= 3, "expected per-page progress publishes");
+  assert.equal(refs[1], refs[2], "highlightText reference must stay stable");
+  assert.ok(controller.getSnapshot().results.length >= 1, "results still update");
+  const stale = refs[1];
+  controller.search("other", true);
+  scheduler.flush();
+  assert.equal(stale("<script>"), "&lt;script&gt;", "stale generation escapes HTML");
+});
