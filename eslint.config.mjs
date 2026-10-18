@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "public/**",
+    // Local design-review artifacts, not part of the product (also gitignored).
+    ".impeccable/**",
   ]),
 ]);
 
