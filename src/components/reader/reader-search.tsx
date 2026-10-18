@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from "react";
+import { Search, X } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import {
   readerSearchSnapshot, ReaderSearchController, SEARCH_LIMITS,
@@ -44,13 +45,19 @@ export function ReaderSearchPanel({ query, onQueryChange, state, onNavigate, cur
 }) {
   const id = useId();
   const statusId = `${id}-status`;
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
     <section className={styles.panel} aria-label="Search PDF" data-reader-search>
       <div className={styles.inputGroup}>
         <label htmlFor={id}>Search in this book</label>
-        <input id={id} type="search" value={query} maxLength={SEARCH_LIMITS.queryChars}
-          placeholder="Word or phrase" autoComplete="off" spellCheck={false}
-          aria-describedby={statusId} onChange={(event) => onQueryChange(event.currentTarget.value)} />
+        <div className={styles.searchField}>
+          <Search aria-hidden="true" />
+          <input ref={inputRef} id={id} type="search" value={query} maxLength={SEARCH_LIMITS.queryChars}
+            placeholder="Word or phrase" autoComplete="off" spellCheck={false}
+            aria-describedby={statusId} onChange={(event) => onQueryChange(event.currentTarget.value)} />
+          {query && <button type="button" className={styles.clearSearch} aria-label="Clear search"
+            onClick={() => { onQueryChange(""); inputRef.current?.focus(); }}><X aria-hidden="true" /></button>}
+        </div>
       </div>
       <div className={styles.status} id={statusId} role="status" aria-live="polite" aria-atomic="true">
         <p>{readerSearchStatus(state, query)}</p>

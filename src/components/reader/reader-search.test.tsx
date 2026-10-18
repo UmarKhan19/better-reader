@@ -39,6 +39,13 @@ test("ReaderSearchPanel does not interpret hostile query/PDF text as HTML", () =
   assert.ok(html.includes('<mark>&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</mark>'));
 });
 
+test("ReaderSearchPanel offers a named clear action only when a query is present", () => {
+  const render = (query: string) => renderToStaticMarkup(<ReaderSearchPanel query={query}
+    onQueryChange={noChange} state={emptyReaderSearchState(5)} onNavigate={noChange} currentPage={1} />);
+  assert.ok(!render("").includes('aria-label="Clear search"'));
+  assert.match(render("node"), /<button[^>]*type="button"[^>]*aria-label="Clear search"/);
+});
+
 test("ReaderSearchPanel reports no OCR, empty/loading/error states and explicit bounded search", () => {
   const blank = emptyReaderSearchState(10);
   assert.match(readerSearchStatus(blank, ""), /Image-only pages cannot be searched/);
