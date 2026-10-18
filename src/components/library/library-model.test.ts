@@ -37,12 +37,13 @@ test("missing and corrupt progress do not turn unread PDFs into started titles",
   assert.deepEqual(parseLibraryProgress('{"page":1}'), { page: 1, numPages: 0 });
 });
 
-test("progress extraction preserves current coercion and numeric-only behavior", () => {
+test("progress extraction preserves current coercion and accepts legacy bare numbers", () => {
   assert.deepEqual(parseLibraryProgress('{"page":"12.6","numPages":"100","offset":0.5}'), { page: 13, numPages: 100 });
   assert.deepEqual(parseLibraryProgress('{"page":7,"numPages":"bad"}'), { page: 7, numPages: 0 });
   assert.deepEqual(parseLibraryProgress("+17"), { page: 17, numPages: 0 });
-  // Unlike the reader parser, the existing library ignores JSON number values.
-  assert.equal(parseLibraryProgress("17"), undefined);
+  // The reader restores "17" as page 17, so the library must read it the same way.
+  assert.deepEqual(parseLibraryProgress("17"), { page: 17, numPages: 0 });
+  assert.deepEqual(parseLibraryProgress("17.4"), { page: 17, numPages: 0 });
 });
 
 test("library progress remains page-based and finished status requires a known total", () => {

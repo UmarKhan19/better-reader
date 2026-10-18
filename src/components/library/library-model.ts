@@ -7,8 +7,6 @@ export type LibraryNotice = {
   text: string;
   details?: string[];
   undo?: PdfItem;
-  retry?: () => void;
-  retryLabel?: string;
 };
 
 export const TITLE_SMALL_WORDS: ReadonlySet<string> = new Set([
@@ -51,20 +49,21 @@ export function displayName(name: string): string {
 /** Missing progress must stay distinct from a reader's default page of 1. */
 export function parseLibraryProgress(raw: string | null): ReadingProgress | undefined {
   if (!raw) return undefined;
-  let parsed: unknown = null;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    const page = Number(raw);
-    if (Number.isFinite(page)) parsed = { page };
+    parsed = Number(raw);
   }
-  if (!parsed || typeof parsed !== "object") return undefined;
-  const value = parsed as { page?: unknown; numPages?: unknown };
-  const page = Number(value.page);
+  const value = parsed && typeof parsed === "object" ? parsed as { page?: unknown; numPages?: unknown } : null;
+  // Older writers stored a bare page number ("17"); the reader still accepts it,
+  // so a book must not look unread here while the reader resumes it.
+  const page = Number(typeof parsed === "number" ? parsed : value?.page);
   if (!Number.isFinite(page) || page < 1) return undefined;
+  const numPages = Number(value?.numPages);
   return {
     page: Math.round(page),
-    numPages: Number.isFinite(Number(value.numPages)) ? Number(value.numPages) : 0,
+    numPages: Number.isFinite(numPages) ? numPages : 0,
   };
 }
 

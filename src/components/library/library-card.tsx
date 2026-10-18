@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Check, ImagePlus, Trash2, X } from "lucide-react";
@@ -12,10 +13,10 @@ export type LibraryCardProps = {
   progress?: ReadingProgress;
   coverFailed: boolean;
   coverBusy: boolean;
-  onCoverError: () => void;
-  onAddCover: (file: File) => void;
-  onRemoveCover: () => void;
-  onDelete: () => void;
+  onCoverError: (id: string) => void;
+  onAddCover: (item: PdfItem, file: File) => void;
+  onRemoveCover: (item: PdfItem) => void;
+  onDelete: (item: PdfItem) => void;
 };
 
 const CARD_CONTROL = cn(
@@ -26,7 +27,8 @@ const CARD_CONTROL = cn(
 const CARD_CONTROL_REVEAL =
   "opacity-100 transition-opacity duration-200 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100";
 
-export function LibraryCard({
+/** Memoized: the grid re-renders on every filter keystroke, but cards rarely change. */
+export const LibraryCard = memo(function LibraryCard({
   item, progress, coverFailed, coverBusy, onCoverError, onAddCover, onRemoveCover, onDelete,
 }: LibraryCardProps) {
   const name = displayName(item.name);
@@ -58,7 +60,7 @@ export function LibraryCard({
             loading="lazy"
             decoding="async"
             className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-            onError={onCoverError}
+            onError={() => onCoverError(item.id)}
           />
         ) : (
           <PosterArtwork
@@ -101,7 +103,7 @@ export function LibraryCard({
             disabled={coverBusy}
             onChange={(event) => {
               const file = event.target.files?.[0];
-              if (file) onAddCover(file);
+              if (file) onAddCover(item, file);
               event.target.value = "";
             }}
             aria-label={`Add cover image for ${name}`}
@@ -111,7 +113,7 @@ export function LibraryCard({
           <button
             type="button"
             disabled={coverBusy}
-            onClick={onRemoveCover}
+            onClick={() => onRemoveCover(item)}
             className={CARD_CONTROL}
             aria-label={`Remove cover image for ${name}`}
           >
@@ -121,7 +123,7 @@ export function LibraryCard({
       </div>
       <button
         type="button"
-        onClick={onDelete}
+        onClick={() => onDelete(item)}
         className={cn(CARD_CONTROL, "absolute top-1.5 right-1.5", CARD_CONTROL_REVEAL)}
         aria-label={`Delete ${name}`}
       >
@@ -129,4 +131,4 @@ export function LibraryCard({
       </button>
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import type { PdfItem } from "@/types/pdf";
 import { cn } from "@/lib/utils";
@@ -32,16 +32,21 @@ export function Library() {
   const heroItem = inProgress[0] ?? items[0];
   const totalBytes = useMemo(() => items.reduce((sum, item) => sum + (item.size || 0), 0), [items]);
 
-  const cardProps = (item: PdfItem): LibraryCardProps => ({
+  // Stable per-item props keep memoized cards from re-rendering on every keystroke.
+  const { markFailed, add, remove } = covers;
+  const { request } = deletion;
+  const cardProps = useCallback((item: PdfItem): LibraryCardProps => ({
     item,
     progress: progress[item.id],
     coverFailed: covers.failed.has(item.id),
     coverBusy: covers.busy.has(item.id),
-    onCoverError: () => covers.markFailed(item.id),
-    onAddCover: (file) => void covers.add(item, file),
-    onRemoveCover: () => void covers.remove(item),
-    onDelete: () => deletion.request(item),
-  });
+    onCoverError: markFailed,
+    onAddCover: add,
+    onRemoveCover: remove,
+    onDelete: request,
+  }), [progress, covers.failed, covers.busy, markFailed, add, remove, request]);
+  const visibleCards = useMemo(() => visible.map(cardProps), [visible, cardProps]);
+  const shelfCards = useMemo(() => inProgress.map(cardProps), [inProgress, cardProps]);
 
   const chooseFiles = () => fileInputRef.current?.click();
   const uploadFiles = async (files: FileList | File[]) => {
@@ -106,9 +111,9 @@ export function Library() {
           />
         )}
         <div className="space-y-10 px-4 pt-7 pb-12 md:space-y-12 md:px-12 md:pt-8 lg:px-16">
-          {inProgress.length > 0 && !query && <LibraryShelf cards={inProgress.map(cardProps)} />}
+          {inProgress.length > 0 && !query && <LibraryShelf cards={shelfCards} />}
           <LibraryGrid
-            cards={visible.map(cardProps)}
+            cards={visibleCards}
             total={items.length}
             loading={loading}
             filter={filter}

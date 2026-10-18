@@ -57,6 +57,11 @@ export function useLibrary() {
     void fetchLibrary(request);
   }, [fetchLibrary]);
 
+  /** Re-reads the folder after a change and invalidates any list request already in flight. */
+  const syncAfterMutation = useCallback(() => {
+    void fetchLibrary(++requestRef.current);
+  }, [fetchLibrary]);
+
   useEffect(() => {
     void fetchLibrary(++requestRef.current);
     return () => { requestRef.current += 1; };
@@ -71,7 +76,10 @@ export function useLibrary() {
     setFailedFiles(null);
     try {
       const result = await client.uploadPdfs(list, setUploadProgress);
-      if (result.items.length) setItems((prev) => mergeUploadedItems(prev, result.items));
+      if (result.items.length) {
+        setItems((prev) => mergeUploadedItems(prev, result.items));
+        syncAfterMutation();
+      }
       setNotice(uploadNotice(result.items.length, result.skipped));
     } catch {
       setFailedFiles(list);
@@ -80,7 +88,7 @@ export function useLibrary() {
       setUploading(false);
       setUploadProgress(null);
     }
-  }, []);
+  }, [syncAfterMutation]);
 
   const requestDelete = useCallback((item: PdfItem) => {
     setPendingDelete(item);
@@ -99,6 +107,7 @@ export function useLibrary() {
     try {
       await client.deletePdf(target.id);
       setItems((prev) => prev.filter((item) => item.id !== target.id));
+      syncAfterMutation();
       setNotice({ tone: "success", text: `Deleted "${displayName(target.name)}".`, undo: target });
       setPendingDelete(null);
       return true;
@@ -108,7 +117,7 @@ export function useLibrary() {
     } finally {
       setDeleting(false);
     }
-  }, [pendingDelete, deleting]);
+  }, [pendingDelete, deleting, syncAfterMutation]);
 
   const undoDelete = useCallback(async (item: PdfItem) => {
     if (undoing) return;
@@ -136,6 +145,7 @@ export function useLibrary() {
       const updated = await client.addCover(item.id, file);
       if (updated) {
         setItems((prev) => prev.map((entry) => entry.id === item.id ? updated : entry));
+        syncAfterMutation();
         setCoverFailed((prev) => {
           const next = new Set(prev);
           next.delete(item.id);
@@ -154,13 +164,14 @@ export function useLibrary() {
         return next;
       });
     }
-  }, [reload]);
+  }, [reload, syncAfterMutation]);
 
   const removeCover = useCallback(async (item: PdfItem) => {
     setCoverBusy((prev) => new Set(prev).add(item.id));
     try {
       await client.removeCover(item.id);
       setItems((prev) => prev.map((entry) => entry.id === item.id ? withoutCover(entry) : entry));
+      syncAfterMutation();
       setNotice({ tone: "success", text: `Cover removed from "${displayName(item.name)}".` });
     } catch {
       setNotice({ tone: "error", text: `Couldn't remove cover from "${displayName(item.name)}".` });
@@ -171,7 +182,7 @@ export function useLibrary() {
         return next;
       });
     }
-  }, []);
+  }, [syncAfterMutation]);
 
   const dismissNotice = useCallback(() => {
     setNotice(null);

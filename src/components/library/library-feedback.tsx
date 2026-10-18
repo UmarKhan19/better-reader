@@ -52,9 +52,6 @@ export function LibraryFeedback({ loadError, notice, onReload, onDismiss, onRetr
                 {undoing ? "Restoring…" : "Undo delete"}
               </Button>
             )}
-            {notice.retry && (
-              <Button variant="outline" size="touch" className="mt-3" onClick={notice.retry}>{notice.retryLabel ?? "Retry"}</Button>
-            )}
           </div>
           <button
             type="button"
