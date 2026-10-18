@@ -5,128 +5,146 @@
 
 # Better Reader
 
-_A personal PDF library and reader for the browser — scroll-first, remembers your place._
+_A personal PDF library and browser reader that remembers your place._
 
-[![Bun](https://img.shields.io/badge/Bun-1.3+-000?style=flat-square&logo=bun)](https://bun.sh)
-[![Node.js](https://img.shields.io/badge/Node.js->=22-3c873a?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Bun](https://img.shields.io/badge/Bun-1.3.14+-000?style=flat-square&logo=bun)](https://bun.sh)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-3c873a?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tests](https://img.shields.io/badge/tests-171%20passing-2ea44f?style=flat-square)](#checks)
 
-[Features](#features) • [Getting started](#getting-started) • [Where your files live](#where-your-files-live) • [Reader checks](#reader-checks) • [Configuration](#configuration)
+[Features](#features) · [Getting started](#getting-started) · [Data and backups](#data-and-backups) · [Configuration](#configuration) · [Checks](#checks)
 
 </div>
 
-Better Reader is a single-server app for reading your own PDFs. Uploads stay on the machine that runs it, the original files are never rewritten, and the reader remembers your page, bookmarks, and preferences per book — including legacy progress formats. It is built for desktop and mobile, with continuous scrolling by default and optional single-page or two-page spread layouts.
+Better Reader is a self-hosted, single-user PDF library. Uploads stay on the server's disk, PDF.js reads them in your browser, and the original files are never rewritten. Reading progress, bookmarks, and per-book settings are saved in that browser.
 
-> [!NOTE]
-> There is no login. Anyone who can open the URL can read, upload, and delete your books. Run it on a machine and network you trust.
+> [!WARNING]
+> Better Reader has no login. Anyone who can reach it can read, upload, or delete PDFs. Put it behind authentication before exposing it beyond a trusted machine or network. The Host guard helps block DNS-rebinding requests; it is not authentication.
 
 ## Features
 
-**Library**
-- Netflix-style poster grid with a full-bleed hero for the book you are reading.
-- Upload multiple PDFs at once (drag-and-drop or file picker) with per-file progress and skip reasons.
-- Optional cover images: add, replace, or remove per book; PDFs without covers get generated poster artwork.
+### Library
+
+- Upload multiple PDFs by file picker or drag-and-drop, with upload progress and per-file results.
+- Add, replace, or remove cover art. Books without covers get generated poster artwork.
 - Search by filename or displayed title; sort by recent or name.
-- Soft-delete with 30-day undo from the library.
+- Delete books with a 30-day undo window.
 
-**Reader**
-- Continuous scroll by default; single-page and desktop two-page spread remain per-book options.
-- Fractional progress, crop, focus, sizing, and paper settings survive reload; bookmarks per book.
-- Optional blank-margin cropping, gesture zoom (pinch, double-tap, Ctrl-wheel), and in-document search with highlighted results.
-- Location history ("Back to previous location") and chapter-aware page seeking via the scrubber.
-- Paper modes: original, dimmed, sepia, dark (full recolor).
-- Focus mode and fullscreen; keyboard shortcuts for navigation, zoom, bookmarks, and search.
+### Reader
 
-**Performance and safety**
-- Rendering and thumbnail memory are bounded (base rasters share 6 MP; physical ceiling ~12 MP; tiles add ≤6 MP).
-- Background work does not delay the visible page; a shared queue prioritizes visible rasters.
-- Host guard blocks DNS-rebinding: the API answers only to localhost, LAN, and `.local` names unless allow-listed.
-- Original PDFs are served with range requests, ETags, and `304 Not Modified`.
+- Continuous scrolling by default, with optional single-page and desktop two-page spread layouts.
+- Resume fractional page position, bookmark pages, and keep layout, sizing, crop, and paper settings per book.
+- Search document text with highlighted results, browse the table of contents or thumbnails, and seek by chapter.
+- Pinch, double-tap, and Ctrl-wheel zoom; focus mode, fullscreen, and keyboard shortcuts.
+- Original, dimmed, sepia, and dark paper modes. Text search does not include OCR, so scanned image-only pages are not searchable.
+
+### Performance
+
+- PDFs up to 1 MiB use normal streaming. Larger or unknown-size files use on-demand byte ranges.
+- A shared render queue prioritizes visible pages over prefetch and thumbnails.
+- Raster memory is capped: 6 MP for shown base pages, 12 MP for physical base-page reservations, 3 MP per canvas, and up to 6 MP across six high-resolution tiles.
+- PDF responses support byte ranges, ETags, and conditional requests.
+
+## Screenshots
+
+Captured from the app running locally on port 3000.
+
+### Library
+
+![Better Reader library with a featured book, continue-reading shelf, and poster grid](./docs/screenshots/library.png)
+
+### PDF reader
+
+![Desktop PDF reader showing a page, navigation controls, and chapter scrubber](./docs/screenshots/reader.png)
+
+![Mobile PDF reader with compact controls and page navigation](./docs/screenshots/reader-mobile.png)
 
 ## Getting started
 
-Requires [Bun](https://bun.sh) (or Node 22+).
+Use Bun 1.3.14 or newer, or Node.js 22 or newer. The commands below use Bun; browser checks and benchmarks also need Node.js 22+.
 
 ```sh
 bun install
-bun run dev        # http://127.0.0.1:3000
+bun run dev
 ```
 
-For a production build:
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). For a production build:
 
 ```sh
 bun run build
-bun run start      # http://127.0.0.1:3000
+bun run start
 ```
 
-Both bind to `127.0.0.1`, so only this machine can reach the app. To read from your phone on the same network, expose it deliberately:
+Both commands bind to `127.0.0.1` by default. To use the library from another device on your LAN, bind deliberately:
 
 ```sh
 bun run start -- --hostname 0.0.0.0
 ```
 
-> [!WARNING]
-> Anyone on that network can reach the same library. Only do this on a network you trust.
+> [!CAUTION]
+> This exposes the same library to your network. Only do this on a trusted network, and add proxy authentication if other people can reach the server.
 
-## Where your files live
+## Data and backups
 
-Everything is under `data/` in the project folder:
+By default, the app stores its library under `data/` in the project directory:
 
 | Path | Contents |
 | --- | --- |
-| `data/uploads/` | Original PDFs, byte for byte |
+| `data/uploads/` | Original PDFs, stored byte for byte |
 | `data/covers/` | Cover images |
 | `data/pdfs.json` | Library index |
-| `data/trash/` | Deleted PDFs and covers, plus `data/trash.json` |
+| `data/trash/pdfs/` and `data/trash/covers/` | Deleted files waiting for restore or purge |
+| `data/trash.json` | Deleted-book metadata |
 
-Back up the library by copying `data/`. The app never rewrites an uploaded PDF. Deleted books can be undone from the library for 30 days, then are purged on the next delete or restore.
+Copy `data/` to back up PDFs, covers, and the library index. Browser progress, bookmarks, theme, and reader settings are stored separately in `localStorage` and are not included in that backup. Expired trash is purged on a later delete or restore.
 
 ## Configuration
 
 | Variable | Purpose |
 | --- | --- |
-| `BETTER_READER_ALLOWED_HOSTS` | Comma-separated hostnames a reverse proxy may use (e.g. `books.home.lan`). |
-| `READER_PDF_ID` | Existing document id for the reader checks. |
-| `READER_URL` | Base URL of the server under test (default `http://127.0.0.1:3417`). |
-
-Run one server process at a time against the same `data/` folder: the index is a JSON file and writes are serialized inside the process only.
+| `BETTER_READER_DATA_DIR` | Use a different persistent directory for the library. Defaults to `./data`. |
+| `BETTER_READER_ALLOWED_HOSTS` | Comma-separated Host names accepted by the API, such as `books.home.lan` behind a reverse proxy. This does not enable authentication. |
+| `READER_URL` | Base URL of the running server for browser checks and benchmarks. |
+| `READER_PDF_ID` | Existing PDF ID used by reader browser checks. |
+| `READER_PDF_IDS` | Comma-separated PDF IDs used by the benchmark. |
 
 ## Checks
 
+Run the unit tests, lint, and production build with:
+
 ```sh
-bun test           # 171 unit tests (storage, parsers, budgets, geometry)
-bun run lint       # ESLint
-bun run build      # Next.js production build
+bun test
+bun run lint
+bun run build
 ```
 
-The reader checks drive a real browser against a running production server. They need Node 22+, an existing Chromium, and an existing PDF in the library. See [docs/reader-performance.md](docs/reader-performance.md) for the full matrix, benchmark variables, and recorded numbers.
+The browser checks need a running production server, Node.js 22+, Chromium, and an existing PDF in the library. `test:reader` also needs the `agent-browser` CLI. They use a disposable browser profile and do not upload or delete library files.
 
 ```sh
+# Terminal 1
 bun run start -- --port 3100
-READER_URL=http://localhost:3100 bun run test:reader
-READER_URL=http://localhost:3100 bun run test:reader:interactions
-READER_URL=http://localhost:3100 BENCH_OUTPUT=/tmp/reader.json bun run benchmark:reader
+
+# Terminal 2
+READER_URL=http://127.0.0.1:3100 READER_PDF_ID=your-pdf-id bun run test:reader
+READER_URL=http://127.0.0.1:3100 READER_PDF_ID=your-pdf-id bun run test:reader:interactions
+READER_URL=http://127.0.0.1:3100 READER_PDF_IDS=pdf-id-1,pdf-id-2 bun run benchmark:reader
 ```
 
-`test:reader` checks HTTP caching/ranges, keyboard navigation, all layouts, crop controls, fractional restoration, bookmarks, paper/themes, focus/dialogs, search focus and retained highlights, Back, thumbnail virtualization, pixel limits, text selection, 320 px/landscape overflow, and accessibility (axe). `test:reader:interactions` checks trusted pinch/double-tap/Ctrl-wheel input and anchoring, actual crop enlargement, tiled high zoom, rapid zoom limits, pointer seeking with exactly one accepted commit, and internal PDF link/Back navigation.
+The checks cover reader navigation, layouts, persistence, search, gestures, accessibility, and rendering limits. See [docs/reader-performance.md](docs/reader-performance.md) for browser requirements, benchmark options, and measured results. Throttled Chromium results are not measurements from a physical phone.
 
-## Performance notes
+## Deployment
 
-- Continuous scrolling is the default; single-page and spread modes stay per-book.
-- Small PDFs (≤ 1 MiB) stream normally; larger or unknown-size PDFs use on-demand ranges with `disableStream`/`disableAutoFetch` and 64 KiB chunks.
-- Visible base rasters share 6 MP; old and incoming together stay within 12 MP; each canvas stays below 3 MP; at most six high-resolution tiles add 6 MP.
-- A 390 px throttled Chromium window is an emulation, not a measured phone. See [docs/reader-performance.md](docs/reader-performance.md) for recorded before/after numbers.
+Better Reader needs one long-running server process and a persistent, writable disk. Run only one process against a given data directory because JSON mutations are serialized within a process, not across processes. Serverless hosts or deployments that discard local files are not suitable. If a reverse proxy uses a custom hostname, add it to `BETTER_READER_ALLOWED_HOSTS` and configure authentication at the proxy.
 
 ## Architecture
 
-- **Storage** (`src/lib/pdf-store.ts`): JSON index + files on disk, serialized mutations, atomic writes, 30-day trash with purge.
-- **API** (`src/app/api/pdfs/`): list/upload (raw body), serve with ranges/ETag, delete, restore, cover CRUD.
-- **Library** (`src/components/library/`): `useLibrary` hook plus focused modules for model, client, grid, shelf, hero, header, card, artwork, feedback.
-- **Reader** (`src/components/reader/`): `PdfReader` orchestrates react-pdf `Document`; `ReaderViewport` computes geometry and windowed rendering; `ReaderPageSurface` manages raster/tile/crop lifecycle; scheduler and raster budget enforce memory limits; search controller extracts and caches text.
-- **State** (`reader-state.ts`): preferences, progress, bookmarks, navigation reducer, parsers that preserve legacy formats.
+| Part | Responsibility |
+| --- | --- |
+| `src/app/` | Next.js pages and PDF API routes |
+| `src/lib/pdf-store/` | JSON index, PDF and cover files, soft-delete and restore |
+| `src/components/library/` | Library data flow, upload, search, cards, covers, and feedback |
+| `src/components/reader/` | PDF.js reader, navigation state, virtualized rendering, search, and settings |
+| Browser `localStorage` | Theme and per-book progress, bookmarks, and preferences |
 
-## Deploying
-
-This is a single-server app. It needs Node, a persistent writable disk for `data/`, and one long-lived process. Serverless platforms that freeze or discard the working directory will lose uploads, so run it on a small VM, a home server, or any host that keeps a disk. Put it behind a reverse proxy with authentication if more than one person can reach it. The API answers only to localhost, LAN addresses, and `.local` names unless `BETTER_READER_ALLOWED_HOSTS` is set.
+The server serves original PDFs directly to PDF.js. The reader requests byte ranges as needed; it does not copy or rewrite a document to open it.
