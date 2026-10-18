@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Bebas_Neue } from "next/font/google";
+import { Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
 import { themeScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -37,8 +36,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col">
-    {children}
-  </body>
+        {children}
+      </body>
     </html>
   );
 }
