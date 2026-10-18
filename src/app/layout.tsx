@@ -23,6 +23,7 @@ const bebasNeue = Bebas_Neue({
 export const metadata: Metadata = {
   title: "Better Reader",
   description: "Your personal PDF library.",
+  icons: { icon: "/favicon.png" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
