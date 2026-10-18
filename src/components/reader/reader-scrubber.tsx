@@ -4,9 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { BookOpen } from "lucide-react";
 import { ScheduledPdfPage } from "./reader-render-queue";
-import { readingProgress } from "./reader-state";
+import { activeChapter, readingProgress, type PdfPageColors } from "./reader-state";
 import { beginScrub, chapterMarkers, finishScrub, previewScrub, type ScrubSession } from "./reader-scrubber-state";
-import { activeChapter } from "./reader-state";
 import type { OutlineEntry } from "./reader-sidebar";
 import styles from "./reader-scrubber.module.css";
 
@@ -19,7 +18,7 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
   outline: OutlineEntry[] | null;
   onCommit: (page: number) => void;
   hidden: boolean;
-  pageColors?: { background: string; foreground: string } | null;
+  pageColors?: PdfPageColors;
 }) {
   const session = useRef<ScrubSession>({ active: false, draft: page });
   const [draft, setDraft] = useState<number | null>(null);
@@ -85,7 +84,7 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
       {preview === draft ? <ScheduledPdfPage key={draft} pdf={pdf} priority={2} pageNumber={draft} width={120}
         devicePixelRatio={1} renderTextLayer={false} renderAnnotationLayer={false} suspense={false}
         pageColors={pageColors ?? undefined}
-        loading={<span>Loading preview…</span>} error={<span>No preview</span>} /> : <span>Page {draft}</span>}
+        loading={<span>Loading preview…</span>} error={<span>No preview</span>} /> : <span>Loading preview…</span>}
       <span>Page {draft}</span>
     </div>}
   </section>;
