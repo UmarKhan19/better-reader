@@ -76,7 +76,10 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
         onKeyUp={(event) => { if (rangeKeys.has(event.key)) finish(true); }}
         onBlur={() => { if (session.current.active) finish(false); }} />
     </div>
-    <output className={styles.position}>Page {shown}<span> / {total}</span><span className={styles.percent}>{shownProgress}%</span></output>
+    <output className={styles.position} aria-label="Reading position">
+      <span className={styles.pageCount}>Page {shown}<span> / {total}</span></span>
+      <span className={styles.percent}>{shownProgress}%</span>
+    </output>
     {draft !== null && <div className={styles.preview} aria-hidden="true">
       {preview === draft ? <ScheduledPdfPage key={draft} pdf={pdf} priority={2} pageNumber={draft} width={120}
         devicePixelRatio={1} renderTextLayer={false} renderAnnotationLayer={false} suspense={false}

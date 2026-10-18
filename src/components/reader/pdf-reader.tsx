@@ -338,7 +338,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
       <header className={styles.header} data-reader-chrome inert={!chromeVisible}>
         <div className={styles.titleGroup}>
           <Button variant="ghost" size="touch" className={styles.libraryLink} aria-label="Back to library" title="Back to library"
-            nativeButton={false} render={<Link href="/" />}><ArrowLeft /><span className={styles.libraryLabel}>Library</span></Button>
+            nativeButton={false} render={<Link href="/" />}>
+            <ArrowLeft /><span className={styles.wordmark} aria-hidden="true">Better Kindle</span>
+            <span className={styles.compactWordmark} aria-hidden="true">BK</span>
+          </Button>
           <div className={styles.desktopOnly}>
             <Button variant="ghost" size="icon-touch" aria-label="Toggle document navigation" title="Document navigation (T)"
               aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((value) => !value)}><PanelLeft /></Button>
@@ -383,8 +386,8 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
               <Focus />{coarsePointer && <span>Focus</span>}
             </Button>
           </div>
-          <Button variant="secondary" size="touch" className={styles.settingsButton} aria-label="Reading settings" title="Reading settings"
-            aria-haspopup="dialog" onClick={() => setPanel("settings")}>
+          <Button variant="default" size="touch" className={styles.settingsButton} aria-label="Reading settings" title="Reading settings"
+            aria-haspopup="dialog" aria-expanded={panel === "settings"} onClick={() => setPanel("settings")}>
             <Settings2 />
             <span className={styles.actionLabel}>Settings</span>
           </Button>
@@ -408,7 +411,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
         onLoadSuccess={onDocumentLoad} onLoadError={() => setLoadError(true)}
         onItemClick={onItemClick}
         loading={<main className={styles.documentStatusMain}>
-          <div className={styles.documentStatus} role="status"><BookOpen size={28} /><p>Opening your PDF…</p></div>
+          <div className={styles.documentStatus} role="status">
+            <div className={styles.loadingPage} aria-hidden="true"><span /><span /><span /><span /><span /></div>
+            <p>Opening your PDF…</p>
+          </div>
         </main>}
         error={<main className={styles.documentStatusMain}>
           <div className={styles.documentStatus} role="alert"><p>{loadError ? "This PDF couldn't be opened." : "Unable to open this PDF."}</p>

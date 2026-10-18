@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import styles from "./reader.module.css";
 
@@ -104,10 +104,14 @@ export function RadioChoices<T extends string>({ legend, value, options, onChang
     <fieldset className={styles.settingGroup}>
       <legend>{legend}</legend>
       <div className={styles.radioChoices} data-presentation={presentation}>
-        {options.map((option) => <label key={option.value} className={styles.radioChoice}>
+        {options.map((option) => <label key={option.value} className={styles.radioChoice}
+          data-paper-option={presentation === "paper" ? option.value : undefined}>
           <input type="radio" name={name} value={option.value} checked={value === option.value}
             onChange={() => onChange(option.value)} />
-          {presentation === "paper" && <span className={styles.paperSample} data-paper-sample={option.value} aria-hidden="true">Aa</span>}
+          {presentation === "paper" && <>
+            <span className={styles.paperSample} aria-hidden="true">Aa</span>
+            <Check className={styles.paperCheck} aria-hidden="true" />
+          </>}
           {option.icon && <span className={styles.choiceIcon} aria-hidden="true">{option.icon}</span>}
           <span>{option.label}</span>
         </label>)}
