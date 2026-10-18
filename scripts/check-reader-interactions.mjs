@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {launchBrowser, readConfig, readyExpression, waitFor} from './benchmark-reader.mjs';
+import limits from '../src/components/reader/reader-limits.json' with { type: 'json' };
 
 const config = readConfig({...process.env, READER_URL: process.env.READER_URL ?? 'http://localhost:3100'});
 const items = (await (await fetch(`${config.origin}/api/pdfs`)).json()).items;
@@ -43,7 +44,7 @@ async function assertAnchor(anchor) {
 }
 async function budget() {
   const result = await evaluate(`(() => {const stage=document.querySelector('[data-reader-stage]'),c=[...stage.querySelectorAll('canvas')],tiles=c.filter(e=>e.hasAttribute('data-reader-tile'));return {base:c.filter(e=>!e.hasAttribute('data-reader-tile')).reduce((s,e)=>s+e.width*e.height,0),tiles:tiles.reduce((s,e)=>s+e.width*e.height,0),tileCount:tiles.length,max:Math.max(0,...c.map(e=>e.width*e.height)),holders:stage.querySelectorAll('[data-cached-page]').length,documentWidth:document.documentElement.scrollWidth,viewport:innerWidth};})()`);
-  assert.ok(result.base<=12_000_000 && result.tiles<=6_000_000 && result.tileCount<=6 && result.max<=3_000_000, JSON.stringify(result));
+  assert.ok(result.base<=limits.basePixelBudget && result.tiles<=limits.tilePixelBudget && result.tileCount<=limits.maxTiles && result.max<=limits.pagePixelLimit, JSON.stringify(result));
   assert.equal(result.documentWidth,result.viewport);
   return result;
 }

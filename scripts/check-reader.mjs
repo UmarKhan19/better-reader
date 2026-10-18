@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { readyExpression } from "./benchmark-reader.mjs";
+import limits from "../src/components/reader/reader-limits.json" with { type: "json" };
 
 const origin = process.env.READER_URL ?? "http://localhost:3000";
 const screenshots = process.env.READER_SCREENSHOTS ? path.resolve(process.env.READER_SCREENSHOTS) : undefined;
@@ -84,9 +85,9 @@ function layout() {
   assert.ok(result.width <= result.viewportWidth, JSON.stringify(result));
   assert.ok(result.centerOffset < 3, JSON.stringify(result));
   // Virtualized continuous pages replace the incumbent three-holder/four-canvas cache.
-  assert.ok(result.basePixels <= 12_000_000, JSON.stringify(result));
-  assert.ok(result.tilePixels <= 6_000_000 && result.tiles <= 6, JSON.stringify(result));
-  assert.ok(result.maxCanvasPixels <= 3_000_000, JSON.stringify(result));
+  assert.ok(result.basePixels <= limits.basePixelBudget, JSON.stringify(result));
+  assert.ok(result.tilePixels <= limits.tilePixelBudget && result.tiles <= limits.maxTiles, JSON.stringify(result));
+  assert.ok(result.maxCanvasPixels <= limits.pagePixelLimit, JSON.stringify(result));
   assert.ok(result.mounted <= result.intersecting + 2, JSON.stringify(result));
   return result;
 }
@@ -198,7 +199,7 @@ try {
   wait("!!document.querySelector('[data-reader-stage][aria-busy=\"false\"]')");
   const zoomWidth = evaluate(`document.querySelector('${activeHolder}').getBoundingClientRect().width`);
   assert.ok(Math.abs(zoomWidth - naturalWidth * 1.3) < 3);
-  assert.ok(evaluate("[...document.querySelectorAll('[data-reader-stage] canvas')].every(c => c.width*c.height <= 3000001)"));
+  assert.ok(evaluate(`[...document.querySelectorAll('[data-reader-stage] canvas')].every(c => c.width*c.height <= ${limits.pagePixelLimit + 1})`));
   browser("select", "#reader-view-mode", "fit-width");
   waitForFitWidth();
   console.log("PASS actual-size, rapid zoom, retained canvas and raster budget");

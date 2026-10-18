@@ -1,9 +1,10 @@
 import type { Size } from "./reader-state";
 import type { RenderPriority } from "./reader-render-scheduler";
+import limits from "./reader-limits.json";
 
-export const BASE_PIXEL_BUDGET = 12_000_000;
-export const SHOWN_PIXEL_BUDGET = BASE_PIXEL_BUDGET / 2;
-export const PAGE_PIXEL_LIMIT = 3_000_000;
+export const BASE_PIXEL_BUDGET = limits.basePixelBudget;
+export const SHOWN_PIXEL_BUDGET = limits.shownPixelBudget;
+export const PAGE_PIXEL_LIMIT = limits.pagePixelLimit;
 export type RasterAllocation = { ratio: number; pixels: number };
 export type RasterCandidate = { page: number; size: Size; visibleArea: number; priority: RenderPriority };
 export function rasterPixels(size: Size, ratio: number) {

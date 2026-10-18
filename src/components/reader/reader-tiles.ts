@@ -1,10 +1,10 @@
 import type { Size } from "./reader-state";
-// Raster reservations enforce 12 MP across all visible, incoming and retained
-// pages, with a 3 MP per-canvas ceiling. Six 1 MP tiles add <=6 MP.
-// Crop sampling uses one <=256x256 scratch canvas. Total <=18.07 MP
-// (~73 MB RGBA), excluding browser/PDF.js internals and external previews.
-export const TILE_PIXEL_BUDGET = 6_000_000;
-export const MAX_TILES = 6;
+import limits from "./reader-limits.json";
+// Raster reservations enforce the base budget across all visible, incoming and retained
+// pages, with a per-canvas ceiling. Tiles add up to the tile budget.
+// Crop sampling uses one <=256x256 scratch canvas.
+export const TILE_PIXEL_BUDGET = limits.tilePixelBudget;
+export const MAX_TILES = limits.maxTiles;
 export const TILE_EDGE = 1000;
 export type VisibleRect = { x: number; y: number; width: number; height: number };
 export type ReaderTile = VisibleRect & { key: string; pixelWidth: number; pixelHeight: number; ratio: number };
