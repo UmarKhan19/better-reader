@@ -17,7 +17,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 10px;
-  background: var(--background);
+  background: var(--reader-field);
   color: var(--foreground);
   font-size: 16px;
   caret-color: var(--reader-accent);

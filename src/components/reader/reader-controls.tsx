@@ -53,7 +53,7 @@ export function PageControls({ page, total, onNavigate, onSeek = onNavigate, dis
     const digits = raw.trim();
     if (digits && /^\d+$/.test(digits)) return Number(digits);
     setInvalid(true);
-    onMessage?.(`“${digits || "Nothing"}” isn't a page number. ${hint}`);
+    onMessage?.(`"${digits || "Nothing"}" isn't a page number. ${hint}`);
     if (digits) input.select();
     return null;
   };
@@ -73,6 +73,7 @@ export function PageControls({ page, total, onNavigate, onSeek = onNavigate, dis
         onSeek(target);
         input.blur();
       }}>
+        <span className={styles.pageLabel} aria-hidden="true">Page</span>
         <input key={page} name="page" type="text" inputMode="numeric"
           defaultValue={page} disabled={disabled || !last} aria-label="Page number"
           title={hint} aria-invalid={invalid || undefined} autoComplete="off"
@@ -94,17 +95,20 @@ export function PageControls({ page, total, onNavigate, onSeek = onNavigate, dis
   );
 }
 
-export function RadioChoices<T extends string>({ legend, value, options, onChange }: {
-  legend: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void;
+export function RadioChoices<T extends string>({ legend, value, options, onChange, presentation = "segmented" }: {
+  legend: string; value: T; options: { value: T; label: string; icon?: React.ReactNode }[]; onChange: (value: T) => void;
+  presentation?: "segmented" | "paper";
 }) {
   const name = useId();
   return (
     <fieldset className={styles.settingGroup}>
       <legend>{legend}</legend>
-      <div className={styles.radioChoices}>
+      <div className={styles.radioChoices} data-presentation={presentation}>
         {options.map((option) => <label key={option.value} className={styles.radioChoice}>
           <input type="radio" name={name} value={option.value} checked={value === option.value}
             onChange={() => onChange(option.value)} />
+          {presentation === "paper" && <span className={styles.paperSample} data-paper-sample={option.value} aria-hidden="true">Aa</span>}
+          {option.icon && <span className={styles.choiceIcon} aria-hidden="true">{option.icon}</span>}
           <span>{option.label}</span>
         </label>)}
       </div>

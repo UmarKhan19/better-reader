@@ -1,5 +1,5 @@
 .viewport { position: relative; margin-inline: auto; overflow-anchor: none; transform-origin: 0 0; }
-.page { position: absolute; overflow: hidden; background: white; box-shadow: 0 3px 18px rgb(0 0 0 / 10%); }
+.page { position: absolute; overflow: hidden; border-radius: 2px; background: white; box-shadow: 0 8px 28px rgb(0 0 0 / 14%); }
 .clipped, .raster { position: absolute; transform-origin: 0 0; }
 .raster { top: 0; left: 0; }
 .raster :global(.react-pdf__Page) { min-height: 0; }

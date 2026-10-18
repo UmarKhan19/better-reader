@@ -8,7 +8,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import Link from "next/link";
 import {
   AlertTriangle, ArrowLeft, Bookmark, BookOpen, Eye, Focus, History, Keyboard, Maximize, Minimize,
-  PanelLeft, Search, Settings2, X, ZoomIn, ZoomOut,
+  Laptop, Moon, PanelLeft, Search, Settings2, Sun, X, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,7 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
 }
 
 function BookReader({ id, title, fileSize }: PdfReaderProps) {
+  const displayTitle = title.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() || title;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLElement>(null);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -336,43 +337,44 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
       }}>
       <header className={styles.header} data-reader-chrome inert={!chromeVisible}>
         <div className={styles.titleGroup}>
-          <Button variant="ghost" size="icon-touch" aria-label="Back to library" title="Back to library"
-            nativeButton={false} render={<Link href="/" />}><ArrowLeft /></Button>
+          <Button variant="ghost" size="touch" className={styles.libraryLink} aria-label="Back to library" title="Back to library"
+            nativeButton={false} render={<Link href="/" />}><ArrowLeft /><span className={styles.libraryLabel}>Library</span></Button>
           <div className={styles.desktopOnly}>
             <Button variant="ghost" size="icon-touch" aria-label="Toggle document navigation" title="Document navigation (T)"
               aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((value) => !value)}><PanelLeft /></Button>
           </div>
           <div className={styles.titleText}>
-            <h1 title={title}>{title}</h1>
-            <p>{chapter?.title ?? (total ? `${total} pages` : "PDF reader")}</p>
+            <h1 title={title}>{displayTitle}</h1>
+            <p><BookOpen aria-hidden="true" /><span>{chapter?.title ?? (total ? `${total} pages` : "PDF reader")}</span></p>
           </div>
         </div>
         <div className={styles.desktopOnly}>
           <PageControls page={pageNumber} total={total} onNavigate={navigate} onSeek={jump} onMessage={showFeedback} />
         </div>
         <div className={styles.toolbarActions}>
-          <Button variant="ghost" size={coarsePointer ? "touch" : "icon-touch"} aria-label="Back to previous location"
+          <Button variant="ghost" size={coarsePointer ? "touch" : "icon-touch"} className={styles.historyAction}
+            data-empty={!reading.history.length} aria-label="Back to previous location"
             title="Back to previous location" disabled={!reading.history.length} onClick={goBack}>
             <History />{coarsePointer && <span className={styles.backLabel}>Previous</span>}
           </Button>
           <Button variant="ghost" size="touch" aria-label="Search document" title="Search document (/ or Ctrl+F)" aria-keyshortcuts="/ Control+f Meta+f"
             aria-expanded={sidebarOpen && sidebarTab === "search"} disabled={!pdf} onClick={openSearch}>
             <Search />
-            <span className="hidden xl:inline text-sm">Search</span>
+            <span className={styles.actionLabel}>Search</span>
           </Button>
-          <div className={styles.wideOnly}>
+          <div className={cn(styles.wideOnly, styles.zoomToolbar)}>
+            <Button variant="ghost" size="icon-touch" aria-label="Zoom out" title="Zoom out (-)" disabled={!pdf}
+              onClick={() => zoomBy(-0.1)}><ZoomOut /></Button>
             <label className="sr-only" htmlFor="reader-view-mode">Page sizing</label>
             <select id="reader-view-mode" className={styles.modeSelect} value={preferences.viewMode}
               onChange={(event) => updatePreferences({ viewMode: event.target.value as ViewMode })}>
               <option value="fit-width">Fit width</option><option value="fit-page">Fit page</option>
               <option value="actual-size">100%</option><option value="custom">Custom · {Math.round(preferences.zoom * 100)}%</option>
             </select>
-            <Button variant="ghost" size="icon-touch" aria-label="Zoom out" title="Zoom out (-)" disabled={!pdf}
-              onClick={() => zoomBy(-0.1)}><ZoomOut /></Button>
             <Button variant="ghost" size="icon-touch" aria-label="Zoom in" title="Zoom in (+)" disabled={!pdf}
               onClick={() => zoomBy(0.1)}><ZoomIn /></Button>
           </div>
-          <div className={styles.desktopOnly}>
+          <div className={cn(styles.desktopOnly, styles.toolbarGroup)}>
             <Button variant="ghost" size="icon-touch" aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"}
               title={bookmarked ? "Remove bookmark (B)" : "Bookmark this page (B)"} aria-pressed={bookmarked}
               disabled={!pdf} onClick={() => toggleBookmark(pageNumber)}><Bookmark fill={bookmarked ? "currentColor" : "none"} /></Button>
@@ -381,10 +383,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
               <Focus />{coarsePointer && <span>Focus</span>}
             </Button>
           </div>
-          <Button variant="ghost" size="touch" aria-label="Reading settings" title="Reading settings"
+          <Button variant="secondary" size="touch" className={styles.settingsButton} aria-label="Reading settings" title="Reading settings"
             aria-haspopup="dialog" onClick={() => setPanel("settings")}>
             <Settings2 />
-            <span className="hidden xl:inline text-sm">Settings</span>
+            <span className={styles.actionLabel}>Settings</span>
           </Button>
         </div>
       </header>
@@ -436,7 +438,7 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
         </ReaderDialog>
       </Document>
 
-      {pdf && firstPageReady && <ReaderScrubber pdf={pdf} page={pageNumber} outline={outline}
+      {pdf && firstPageReady && <ReaderScrubber pdf={pdf} page={pageNumber} progress={progress} outline={outline}
         pageColors={pageColors} onCommit={jump} hidden={!chromeVisible} />}
 
       <nav className={styles.mobileFooter} aria-label="Page navigation" data-reader-chrome inert={!chromeVisible}>
@@ -457,46 +459,57 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
 
       <ReaderDialog open={panel === "settings"} title="Reading settings" onClose={() => setPanel(null)}>
         <div className={styles.settings}>
-          <label className={styles.settingGroup}>
-            <span>Reading layout</span>
-            <select value={preferences.layout} onChange={(event) => updatePreferences({ layout: event.target.value as ReaderLayout })}>
-              <option value="continuous">Continuous scroll</option><option value="single">Single page</option>
-              <option value="spread">Two-page spread</option>
-            </select>
-          </label>
-          <p className={styles.settingsNote}>Two-page spread uses continuous scroll on narrow screens. {storageBlocked ? "This choice can't be saved on this device right now." : "Your layout choice stays saved."}</p>
-          <label className={styles.toggleSetting}>
-            <span>Fit content <small>Hide blank margins without changing the PDF.</small></span>
-            <input type="checkbox" role="switch" checked={preferences.cropMargins}
-              onChange={(event) => updatePreferences({ cropMargins: event.target.checked })} />
-          </label>
-          <label className={styles.settingGroup}>
-            <span>Page sizing</span>
-            <select value={preferences.viewMode} onChange={(event) => updatePreferences({ viewMode: event.target.value as ViewMode })}>
-              <option value="fit-width">Fit width</option><option value="fit-page">Fit page</option>
-              <option value="actual-size">Actual size · 100%</option><option value="custom">Custom zoom</option>
-            </select>
-          </label>
-          <div className={styles.settingGroup}><span>Zoom</span><div className={styles.zoomControls}>
-            <Button variant="outline" size="icon-touch" aria-label="Zoom out" disabled={!pdf} onClick={() => zoomBy(-0.1)}><ZoomOut /></Button>
-            <output aria-label="Zoom level">{Math.round((preferences.viewMode === "custom" ? preferences.zoom : effectiveScale) * 100)}%</output>
-            <Button variant="outline" size="icon-touch" aria-label="Zoom in" disabled={!pdf} onClick={() => zoomBy(0.1)}><ZoomIn /></Button>
-          </div></div>
-          <RadioChoices legend="Interface theme" value={theme}
-            onChange={(value) => { if (!setTheme(value)) setStorageBlocked(true); }}
-            options={[{ value: "system", label: "System" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} />
-          <p className={styles.settingsNote}>The theme applies to your library and every book.{storageBlocked && " It won't survive a reload until browser storage works again."}</p>
-          <RadioChoices legend="Paper" value={preferences.paper} onChange={(paper) => updatePreferences({ paper })}
-            options={[{ value: "original", label: "Original" }, { value: "dimmed", label: "Dimmed" }, { value: "sepia", label: "Sepia" }, { value: "dark", label: "Dark" }]} />
-          <p className={styles.settingsNote}>Paper modes change brightness, warmth, or contrast. Dark mode recolors the whole page, including diagrams and images. {storageBlocked ? "This setting can't be saved on this device right now." : "These settings are saved for this book."}</p>
-          <div className={styles.settingsActions}>
-            <Button variant="outline" size="touch" onClick={toggleFocus}><Focus />{focusMode ? "Exit focus mode" : "Enter focus mode"}</Button>
-            <Button variant="outline" size="touch" disabled={!fullscreenSupported} title="Toggle fullscreen (F)"
-              onClick={() => void toggleFullscreen()}>
-              {isFullscreen ? <Minimize /> : <Maximize />}{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</Button>
-            <Button variant="ghost" size="touch" onClick={() => setPanel("shortcuts")}><Keyboard />Keyboard shortcuts</Button>
+          <div className={styles.settingsSection}>
+            <label className={styles.settingGroup}>
+              <span>Reading layout</span>
+              <select value={preferences.layout} onChange={(event) => updatePreferences({ layout: event.target.value as ReaderLayout })}>
+                <option value="continuous">Continuous scroll</option><option value="single">Single page</option>
+                <option value="spread">Two-page spread</option>
+              </select>
+            </label>
+            <p className={styles.settingsNote}>Two-page spread uses continuous scroll on narrow screens. {storageBlocked ? "This choice can't be saved on this device right now." : "Your layout choice stays saved."}</p>
+            <label className={styles.toggleSetting}>
+              <span>Fit content <small>Hide blank margins without changing the PDF.</small></span>
+              <input type="checkbox" role="switch" checked={preferences.cropMargins}
+                onChange={(event) => updatePreferences({ cropMargins: event.target.checked })} />
+            </label>
+            <div className={styles.sizingSettings}>
+              <label className={styles.settingGroup}>
+                <span>Page sizing</span>
+                <select value={preferences.viewMode} onChange={(event) => updatePreferences({ viewMode: event.target.value as ViewMode })}>
+                  <option value="fit-width">Fit width</option><option value="fit-page">Fit page</option>
+                  <option value="actual-size">Actual size · 100%</option><option value="custom">Custom zoom</option>
+                </select>
+              </label>
+              <div className={styles.settingGroup}>
+                <span>Zoom</span>
+                <div className={styles.zoomControls}>
+                  <Button variant="ghost" size="icon-touch" aria-label="Zoom out" disabled={!pdf} onClick={() => zoomBy(-0.1)}><ZoomOut /></Button>
+                  <output aria-label="Zoom level">{Math.round((preferences.viewMode === "custom" ? preferences.zoom : effectiveScale) * 100)}%</output>
+                  <Button variant="ghost" size="icon-touch" aria-label="Zoom in" disabled={!pdf} onClick={() => zoomBy(0.1)}><ZoomIn /></Button>
+                </div>
+              </div>
+            </div>
           </div>
-          <p className={styles.settingsNote}>Focus mode hides the toolbar so only the page stays in view. Fullscreen fills your screen with the reader. You can use both together.</p>
+          <div className={styles.settingsSection}>
+            <RadioChoices legend="Interface theme" value={theme}
+              onChange={(value) => { if (!setTheme(value)) setStorageBlocked(true); }}
+              options={[{ value: "system", label: "System", icon: <Laptop /> }, { value: "light", label: "Light", icon: <Sun /> }, { value: "dark", label: "Dark", icon: <Moon /> }]} />
+            <p className={styles.settingsNote}>The theme applies to your library and every book.{storageBlocked && " It won't survive a reload until browser storage works again."}</p>
+            <RadioChoices legend="Paper" presentation="paper" value={preferences.paper} onChange={(paper) => updatePreferences({ paper })}
+              options={[{ value: "original", label: "Original" }, { value: "dimmed", label: "Dimmed" }, { value: "sepia", label: "Sepia" }, { value: "dark", label: "Dark" }]} />
+            <p className={styles.settingsNote}>Paper modes change brightness, warmth, or contrast. Dark mode recolors the whole page, including diagrams and images. {storageBlocked ? "This setting can't be saved on this device right now." : "These settings are saved for this book."}</p>
+          </div>
+          <div className={styles.settingsSection}>
+            <div className={styles.settingsActions}>
+              <Button variant="outline" size="touch" aria-pressed={focusMode} onClick={toggleFocus}><Focus />{focusMode ? "Exit focus mode" : "Enter focus mode"}</Button>
+              <Button variant="outline" size="touch" disabled={!fullscreenSupported} title="Toggle fullscreen (F)"
+                onClick={() => void toggleFullscreen()}>
+                {isFullscreen ? <Minimize /> : <Maximize />}{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</Button>
+              <Button variant="ghost" size="touch" onClick={() => setPanel("shortcuts")}><Keyboard />Keyboard shortcuts</Button>
+            </div>
+            <p className={styles.settingsNote}>Focus mode hides the toolbar so only the page stays in view. Fullscreen fills your screen with the reader. You can use both together.</p>
+          </div>
         </div>
       </ReaderDialog>
       <ReaderDialog open={panel === "shortcuts"} title="Keyboard shortcuts" onClose={() => setPanel(null)}><KeyboardShortcuts /></ReaderDialog>

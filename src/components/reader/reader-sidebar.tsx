@@ -3,7 +3,7 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ScheduledPdfPage } from "./reader-render-queue";
 import { Tabs } from "@base-ui/react/tabs";
-import { Bookmark, Trash2 } from "lucide-react";
+import { Bookmark, Grid2X2, List, Search, Trash2 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Button } from "@/components/ui/button";
 import { THUMBNAIL_ROW_HEIGHT, thumbnailWindow } from "./reader-state";
@@ -206,10 +206,10 @@ export function ReaderSidebar({
       if (value === "contents" || value === "pages" || value === "bookmarks" || value === "search") onTabChange(value);
     }}>
       <Tabs.List className={styles.tabList} aria-label="Document navigation">
-        <Tabs.Tab className={styles.tab} value="contents">Contents</Tabs.Tab>
-        <Tabs.Tab className={styles.tab} value="pages">Pages</Tabs.Tab>
-        <Tabs.Tab className={styles.tab} value="bookmarks">Bookmarks</Tabs.Tab>
-        <Tabs.Tab className={styles.tab} value="search">Search</Tabs.Tab>
+        <Tabs.Tab className={styles.tab} value="contents"><List aria-hidden="true" /><span>Contents</span></Tabs.Tab>
+        <Tabs.Tab className={styles.tab} value="pages"><Grid2X2 aria-hidden="true" /><span>Pages</span></Tabs.Tab>
+        <Tabs.Tab className={styles.tab} value="bookmarks"><Bookmark aria-hidden="true" /><span>Bookmarks</span></Tabs.Tab>
+        <Tabs.Tab className={styles.tab} value="search"><Search aria-hidden="true" /><span>Search</span></Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="contents" className={styles.tabPanel}>
         {outline === null ? <p className={styles.emptyState} role="status">Loading contents…</p>
