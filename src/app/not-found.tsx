@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Not found — Better Kindle",
+  title: "Not found, Better Kindle",
   description: "This page does not exist.",
 };
 
