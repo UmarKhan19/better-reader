@@ -1,6 +1,9 @@
-import { createReadStream, readdirSync } from "node:fs";
+import { createWriteStream } from "node:fs";
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { randomUUID } from "node:crypto";
 import type { PdfItem } from "@/types/pdf";
 
@@ -9,6 +12,10 @@ const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 const COVERS_DIR = path.join(DATA_DIR, "covers");
 const INDEX_FILE = path.join(DATA_DIR, "pdfs.json");
 const TRASH_DIR = path.join(DATA_DIR, "trash");
+// PDFs and cover images live in separate trash directories so one file name can
+// never overwrite the other. TRASH_DIR itself keeps pre-upgrade deletions readable.
+const TRASH_PDFS_DIR = path.join(TRASH_DIR, "pdfs");
+const TRASH_COVERS_DIR = path.join(TRASH_DIR, "covers");
 const TRASH_FILE = path.join(DATA_DIR, "trash.json");
 // Deleted files stay recoverable for 30 days; older entries are purged on the
 // next delete or restore so the trash cannot grow without bound.
@@ -25,18 +32,46 @@ export function isValidPdfId(id: string): boolean {
 async function ensureDirs(): Promise<void> {
   await mkdir(UPLOADS_DIR, { recursive: true });
   await mkdir(COVERS_DIR, { recursive: true });
-  await mkdir(TRASH_DIR, { recursive: true });
+  await mkdir(TRASH_PDFS_DIR, { recursive: true });
+  await mkdir(TRASH_COVERS_DIR, { recursive: true });
 }
 
-async function readIndex(): Promise<PdfItem[]> {
+// Every index or trash change is a read-modify-write of a JSON file. One queue
+// per process stops overlapping requests from overwriting each other's changes.
+let mutations: Promise<unknown> = Promise.resolve();
+function serialized<T>(change: () => Promise<T>): Promise<T> {
+  const run = mutations.then(change, change);
+  mutations = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+/** Writes through a temporary file so a failed or interrupted save never truncates the current one. */
+async function writeJson(file: string, value: unknown): Promise<void> {
+  const temp = `${file}.${randomUUID()}.tmp`;
   try {
-    const raw = await readFile(INDEX_FILE, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isPdfItem);
+    await writeFile(temp, JSON.stringify(value, null, 2), "utf8");
+    await rename(temp, file);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    await rm(temp, { force: true });
     throw error;
+  }
+}
+
+async function readJson(file: string): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(file, "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function fileExists(file: string): Promise<boolean> {
+  try {
+    await stat(file);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -52,10 +87,45 @@ function isPdfItem(value: unknown): value is PdfItem {
   );
 }
 
-const COVER_URL = (id: string) => `/api/pdfs/${id}/cover`;
+function isTrashRecord(value: unknown): value is TrashRecord {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return isPdfItem(v.item) && typeof v.deletedAt === "string";
+}
 
-function applyCoverMetadata(item: PdfItem, fileName: string, mimeType?: string): PdfItem {
-  const url = COVER_URL(item.id);
+async function readIndex(): Promise<PdfItem[]> {
+  const parsed = await readJson(INDEX_FILE);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(isPdfItem);
+}
+
+function writeIndex(items: PdfItem[]): Promise<void> {
+  return writeJson(INDEX_FILE, items);
+}
+
+async function readTrash(): Promise<TrashRecord[]> {
+  const parsed = await readJson(TRASH_FILE);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(isTrashRecord);
+}
+
+function writeTrash(records: TrashRecord[]): Promise<void> {
+  return writeJson(TRASH_FILE, records);
+}
+
+export async function findPdf(id: string): Promise<PdfItem | null> {
+  if (!isValidPdfId(id)) return null;
+  const items = await readIndex();
+  return items.find((item) => item.id === id) ?? null;
+}
+
+const coverUrl = (id: string, version: string) => `/api/pdfs/${id}/cover?v=${encodeURIComponent(version)}`;
+
+function applyCoverMetadata(item: PdfItem, fileName: string, version?: string): PdfItem {
+  // A new version on every saved cover changes the URL, so an open page cannot
+  // keep showing the replaced image from its cache.
+  const current = version ?? item.coverVersion ?? "1";
+  const url = coverUrl(item.id, current);
   return {
     ...item,
     hasCover: true,
@@ -63,8 +133,8 @@ function applyCoverMetadata(item: PdfItem, fileName: string, mimeType?: string):
     coverImage: url,
     coverUrl: url,
     coverFileName: fileName,
-    coverMimeType: mimeType || item.coverMimeType,
-    coverExt: path.extname(fileName).toLowerCase() || item.coverExt,
+    coverVersion: current,
+    coverExt: path.extname(fileName).toLowerCase() || undefined,
     thumbnail: url,
     thumbnailUrl: url,
   };
@@ -78,7 +148,7 @@ function clearCoverMetadata(item: PdfItem): PdfItem {
     coverImage: undefined,
     coverUrl: undefined,
     coverFileName: undefined,
-    coverMimeType: undefined,
+    coverVersion: undefined,
     coverExt: undefined,
     thumbnail: undefined,
     thumbnailUrl: undefined,
@@ -94,267 +164,274 @@ async function findCoverFileName(dir: string, id: string): Promise<string | null
   }
 }
 
-async function writeIndex(items: PdfItem[]): Promise<void> {
-  await writeFile(INDEX_FILE, JSON.stringify(items, null, 2), "utf8");
-}
-
-function isTrashRecord(value: unknown): value is TrashRecord {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return isPdfItem(v.item) && typeof v.deletedAt === "string";
-}
-
-async function readTrash(): Promise<TrashRecord[]> {
-  try {
-    const raw = await readFile(TRASH_FILE, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isTrashRecord);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
+function startsWith(data: Uint8Array, text: string, offset = 0): boolean {
+  if (data.length < offset + text.length) return false;
+  for (let index = 0; index < text.length; index++) {
+    if (data[offset + index] !== text.charCodeAt(index)) return false;
   }
+  return true;
 }
 
-async function writeTrash(records: TrashRecord[]): Promise<void> {
-  await writeFile(TRASH_FILE, JSON.stringify(records, null, 2), "utf8");
+const IMAGE_SIGNATURES: { extension: string; matches: (data: Uint8Array) => boolean }[] = [
+  { extension: ".png", matches: (data) => data.length >= 8 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47 },
+  { extension: ".jpg", matches: (data) => data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff },
+  { extension: ".gif", matches: (data) => startsWith(data, "GIF87a") || startsWith(data, "GIF89a") },
+  { extension: ".webp", matches: (data) => startsWith(data, "RIFF") && startsWith(data, "WEBP", 8) },
+  { extension: ".avif", matches: (data) => startsWith(data, "ftyp", 4) && (startsWith(data, "avif", 8) || startsWith(data, "avis", 8)) },
+  { extension: ".bmp", matches: (data) => data.length >= 2 && data[0] === 0x42 && data[1] === 0x4d },
+];
+
+/** The file name and MIME type come from the uploader; only the bytes decide what this is. */
+function imageExtension(data: Uint8Array): string | null {
+  return IMAGE_SIGNATURES.find(({ matches }) => matches(data))?.extension ?? null;
 }
 
-async function purgeExpiredTrash(records: TrashRecord[]): Promise<TrashRecord[]> {
-  const cutoff = Date.now() - TRASH_TTL_MS;
-  const live = records.filter((record) => {
-    const deletedAt = Date.parse(record.deletedAt);
-    return !Number.isFinite(deletedAt) || deletedAt >= cutoff;
-  });
-  const purged = records.filter((record) => !live.includes(record));
-  if (purged.length) {
-    await Promise.all(purged.map(async (record) => {
-      await rm(path.join(TRASH_DIR, `${record.item.id}.pdf`), { force: true });
-      const coverName = record.item.coverFileName || (await findCoverFileName(TRASH_DIR, record.item.id));
-      if (coverName) await rm(path.join(TRASH_DIR, coverName), { force: true });
-    }));
+async function saveCoverToItem(item: PdfItem, data: Uint8Array, extension: string): Promise<PdfItem> {
+  const fileName = `${item.id}${extension}`;
+  const previous = item.coverFileName ?? (await findCoverFileName(COVERS_DIR, item.id));
+  // Write the new image first: a failed write must not leave the old cover deleted.
+  await writeFile(path.join(COVERS_DIR, fileName), data);
+  if (previous && previous !== fileName) {
+    await rm(path.join(COVERS_DIR, previous), { force: true });
   }
-  return live;
+  return applyCoverMetadata(item, fileName, randomUUID());
 }
 
 export async function listPdfs(): Promise<PdfItem[]> {
   await ensureDirs();
   const items = await readIndex();
-  const enriched = await Promise.all(items.map(async (item) => {
-    if (item.hasCover && item.coverFileName) return item;
-    const fileName = await findCoverFileName(COVERS_DIR, item.id);
+  // One directory read for the whole list; the old code scanned covers once per item.
+  const coverByOwner = new Map<string, string>();
+  try {
+    for (const name of await readdir(COVERS_DIR)) {
+      const dot = name.indexOf(".");
+      if (dot > 0 && !name.toLowerCase().endsWith(".pdf")) coverByOwner.set(name.slice(0, dot), name);
+    }
+  } catch {
+    // A missing covers directory simply means no covers.
+  }
+  const enriched = items.map((item) => {
+    const fileName = coverByOwner.get(item.id);
     if (!fileName) return item.hasCover ? clearCoverMetadata(item) : item;
-    return applyCoverMetadata(item, fileName, item.coverMimeType);
-  }));
+    return applyCoverMetadata(item, fileName);
+  });
   return enriched.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function savePdf(
-  file: File,
-  cover?: File | null,
-): Promise<PdfItem> {
+/** Streams one uploaded PDF to disk and adds it to the index; a failure removes the bytes again. */
+export async function savePdf(body: ReadableStream<Uint8Array>, name: string): Promise<PdfItem> {
   await ensureDirs();
   const id = randomUUID();
+  const file = path.join(UPLOADS_DIR, `${id}.pdf`);
+  try {
+    await pipeline(Readable.fromWeb(body as unknown as NodeReadableStream<Uint8Array>), createWriteStream(file));
+  } catch (error) {
+    await rm(file, { force: true });
+    throw error;
+  }
   const item: PdfItem = {
     id,
-    name: file.name || `${id}.pdf`,
-    size: file.size,
-    mimeType: file.type || "application/pdf",
+    name: name || `${id}.pdf`,
+    size: (await stat(file)).size,
+    mimeType: "application/pdf",
     createdAt: new Date().toISOString(),
   };
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(UPLOADS_DIR, `${id}.pdf`), buffer);
-  const items = await readIndex();
-  let savedItem = item;
-  if (cover) {
-    savedItem = await saveCoverToItem(item, cover);
-  }
-  items.push(savedItem);
-  await writeIndex(items);
-  return savedItem;
+  return serialized(async () => {
+    const items = await readIndex();
+    items.push(item);
+    try {
+      await writeIndex(items);
+    } catch (error) {
+      // The index never learned about this file, so the bytes must not stay.
+      await rm(file, { force: true });
+      throw error;
+    }
+    return item;
+  });
 }
 
-async function saveCoverToItem(item: PdfItem, file: File): Promise<PdfItem> {
+export type CoverSaveResult =
+  | { ok: true; item: PdfItem }
+  | { ok: false; reason: "missing" | "unsupported" };
+
+export async function saveCover(id: string, file: File): Promise<CoverSaveResult> {
+  if (!isValidPdfId(id) || !(file instanceof File)) return { ok: false, reason: "missing" };
+  const data = new Uint8Array(await file.arrayBuffer());
+  const extension = imageExtension(data);
+  if (!extension) return { ok: false, reason: "unsupported" };
   await ensureDirs();
-  const ext = safeImageExtension(file);
-  const fileName = `${item.id}${ext}`;
-  const previous = await findCoverFileName(COVERS_DIR, item.id);
-  if (previous && previous !== fileName) {
-    await rm(path.join(COVERS_DIR, previous), { force: true });
-  }
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(COVERS_DIR, fileName), buffer);
-  return applyCoverMetadata(item, fileName, file.type || undefined);
-}
-
-function safeImageExtension(file: File): string {
-  const fromName = path.extname(file.name || "").toLowerCase();
-  if (fromName && /^\.[a-z0-9]+$/.test(fromName)) return fromName;
-  const type = (file.type || "").toLowerCase();
-  if (type === "image/png") return ".png";
-  if (type === "image/jpeg" || type === "image/jpg") return ".jpg";
-  if (type === "image/webp") return ".webp";
-  if (type === "image/gif") return ".gif";
-  if (type === "image/avif") return ".avif";
-  if (type === "image/svg+xml") return ".svg";
-  return ".png";
-}
-
-export async function saveCover(a: unknown, b: unknown): Promise<PdfItem | null> {
-  const id = (a instanceof File ? b : a) as string;
-  const file = (a instanceof File ? a : b) as File;
-  if (!isValidPdfId(id) || !(file instanceof File)) return null;
-  await ensureDirs();
-  const items = await readIndex();
-  const index = items.findIndex((item) => item.id === id);
-  if (index === -1) return null;
-  const updated = await saveCoverToItem(items[index], file);
-  items[index] = updated;
-  await writeIndex(items);
-  return updated;
+  return serialized(async () => {
+    const items = await readIndex();
+    const index = items.findIndex((item) => item.id === id);
+    if (index === -1) return { ok: false, reason: "missing" };
+    const updated = await saveCoverToItem(items[index], data, extension);
+    items[index] = updated;
+    await writeIndex(items);
+    return { ok: true, item: updated };
+  });
 }
 
 export async function deleteCover(id: string): Promise<boolean> {
   if (!isValidPdfId(id)) return false;
   await ensureDirs();
-  const items = await readIndex();
-  const index = items.findIndex((item) => item.id === id);
-  if (index === -1) return false;
-  const item = items[index];
-  const fileName = item.coverFileName || (await findCoverFileName(COVERS_DIR, id));
-  if (fileName) {
-    await rm(path.join(COVERS_DIR, fileName), { force: true });
-  }
-  items[index] = clearCoverMetadata(item);
-  await writeIndex(items);
-  return true;
-}
-
-export function coverFilePath(a: unknown, b?: PdfItem | null): string {
-  let id: string;
-  let item: PdfItem | null | undefined = b;
-  if (a && typeof a === "object" && "id" in (a as Record<string, unknown>)) {
-    item = a as PdfItem;
-    id = (a as PdfItem).id;
-  } else {
-    id = a as string;
-  }
-  const fileName = item?.coverFileName;
-  if (fileName) return path.join(COVERS_DIR, fileName);
-  try {
-    const found = readdirSync(COVERS_DIR).find((name) => name.startsWith(`${id}.`) && !name.toLowerCase().endsWith(".pdf"));
-    if (found) return path.join(COVERS_DIR, found);
-  } catch {
-    // ignore
-  }
-  return path.join(COVERS_DIR, `${id}.png`);
-}
-
-export const coverPath = coverFilePath;
-export function getCoverPath(id: string, item?: PdfItem | null): string {
-  return coverFilePath(id, item);
+  return serialized(async () => {
+    const items = await readIndex();
+    const index = items.findIndex((item) => item.id === id);
+    if (index === -1) return false;
+    const item = items[index];
+    const fileName = item.coverFileName ?? (await findCoverFileName(COVERS_DIR, id));
+    if (fileName) {
+      await rm(path.join(COVERS_DIR, fileName), { force: true });
+    }
+    items[index] = clearCoverMetadata(item);
+    await writeIndex(items);
+    return true;
+  });
 }
 
 export async function resolveCoverFilePath(id: string): Promise<string | null> {
   await ensureDirs();
-  const items = await readIndex();
-  const item = items.find((entry) => entry.id === id);
+  const item = await findPdf(id);
   const fromMeta = item?.coverFileName ? path.join(COVERS_DIR, item.coverFileName) : null;
-  if (fromMeta) {
-    try { await stat(fromMeta); return fromMeta; } catch { /* fall through */ }
-  }
+  if (fromMeta && await fileExists(fromMeta)) return fromMeta;
   const found = await findCoverFileName(COVERS_DIR, id);
   return found ? path.join(COVERS_DIR, found) : null;
 }
 
-export async function coverFileExists(id: string): Promise<boolean> {
-  return (await resolveCoverFilePath(id)) !== null;
+async function findStashedPdf(id: string): Promise<string | null> {
+  for (const dir of [TRASH_PDFS_DIR, TRASH_DIR]) {
+    const file = path.join(dir, `${id}.pdf`);
+    if (await fileExists(file)) return file;
+  }
+  return null;
+}
+
+/** Removes every byte a trash record owns, in the current and the pre-upgrade layout. */
+async function removeTrashedFiles(record: TrashRecord): Promise<void> {
+  const id = record.item.id;
+  const coverName = record.item.coverFileName
+    ?? (await findCoverFileName(TRASH_COVERS_DIR, id))
+    ?? (await findCoverFileName(TRASH_DIR, id))
+    ?? (await findCoverFileName(COVERS_DIR, id));
+  const targets = [
+    path.join(TRASH_PDFS_DIR, `${id}.pdf`),
+    path.join(TRASH_DIR, `${id}.pdf`),
+    ...(coverName ? [
+      path.join(TRASH_COVERS_DIR, coverName),
+      path.join(TRASH_DIR, coverName),
+      path.join(COVERS_DIR, coverName),
+    ] : []),
+  ];
+  for (const target of targets) await rm(target, { force: true });
+}
+
+async function purgeExpiredTrash(records: TrashRecord[]): Promise<TrashRecord[]> {
+  const cutoff = Date.now() - TRASH_TTL_MS;
+  const live: TrashRecord[] = [];
+  for (const record of records) {
+    const deletedAt = Date.parse(record.deletedAt);
+    if (Number.isFinite(deletedAt) && deletedAt < cutoff) await removeTrashedFiles(record);
+    else live.push(record);
+  }
+  return live;
+}
+
+async function unstash(id: string, coverName: string | null, coverMoved: boolean): Promise<void> {
+  await rename(path.join(TRASH_PDFS_DIR, `${id}.pdf`), path.join(UPLOADS_DIR, `${id}.pdf`)).catch(() => {});
+  if (coverMoved && coverName) {
+    await rename(path.join(TRASH_COVERS_DIR, coverName), path.join(COVERS_DIR, coverName)).catch(() => {});
+  }
 }
 
 export async function deletePdf(id: string): Promise<boolean> {
   if (!isValidPdfId(id)) return false;
   await ensureDirs();
-  const items = await readIndex();
-  const target = items.find((item) => item.id === id);
-  if (!target) return false;
-  const next = items.filter((item) => item.id !== id);
-  await writeIndex(next);
-  // Move the file into the trash instead of unlinking it, so the delete can be
-  // undone from the library. Only a file that actually moved is restorable.
-  let stashed = false;
-  try {
-    await mkdir(TRASH_DIR, { recursive: true });
-    await rename(path.join(UPLOADS_DIR, `${id}.pdf`), path.join(TRASH_DIR, `${id}.pdf`));
-    stashed = true;
-  } catch (error) {
-    // ENOENT: the file was already gone, nothing to keep. Any other failure
-    // (e.g. permissions) leaves the bytes on disk rather than destroying them;
-    // the entry is only reachable through the index, so the file stays hidden.
-    void error;
-  }
-  // Move any cover image into the trash too, so restore brings it back.
-  const coverName = target.coverFileName || (await findCoverFileName(COVERS_DIR, id));
-  if (stashed && coverName) {
+  return serialized(async () => {
+    const items = await readIndex();
+    const target = items.find((item) => item.id === id);
+    if (!target) return false;
+    const upload = path.join(UPLOADS_DIR, `${id}.pdf`);
+    const stashed = path.join(TRASH_PDFS_DIR, `${id}.pdf`);
+    let moved = false;
     try {
-      await rename(path.join(COVERS_DIR, coverName), path.join(TRASH_DIR, coverName));
+      await rename(upload, stashed);
+      moved = true;
     } catch (error) {
-      void error;
+      // ENOENT: the bytes were already gone, so there is nothing to restore.
+      // Anything else leaves the book in place and reports the failure.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
-  }
-  if (stashed) {
-    const record = (await readTrash()).filter((entry) => entry.item.id !== id);
-    record.push({ item: target, deletedAt: new Date().toISOString() });
-    await writeTrash(await purgeExpiredTrash(record));
-  }
-  return true;
+    // Only a book whose bytes actually reached the trash can be restored, so only
+    // then does its cover move with it. A book that was already gone keeps its
+    // cover in place; moving it would leave the image stranded with no trash record.
+    const coverName = moved
+      ? target.coverFileName ?? (await findCoverFileName(COVERS_DIR, id))
+      : null;
+    let coverMoved = false;
+    if (coverName) {
+      try {
+        await rename(path.join(COVERS_DIR, coverName), path.join(TRASH_COVERS_DIR, coverName));
+        coverMoved = true;
+      } catch {
+        // The cover file is already gone or cannot move; the book is what matters.
+      }
+    }
+    const purged = await purgeExpiredTrash((await readTrash()).filter((entry) => entry.item.id !== id));
+    const next = moved ? [...purged, { item: target, deletedAt: new Date().toISOString() }] : purged;
+    try {
+      await writeTrash(next);
+    } catch (error) {
+      if (moved) await unstash(id, coverName, coverMoved);
+      throw error;
+    }
+    try {
+      await writeIndex(items.filter((item) => item.id !== id));
+    } catch (error) {
+      // Put the bytes back and drop the recovery record, so the book stays whole.
+      await writeTrash(purged).catch(() => {});
+      if (moved) await unstash(id, coverName, coverMoved);
+      throw error;
+    }
+    return true;
+  });
 }
 
 export async function restorePdf(id: string): Promise<PdfItem | null> {
   if (!isValidPdfId(id)) return null;
   await ensureDirs();
-  const records = await readTrash();
-  const record = records.find((entry) => entry.item.id === id);
-  if (!record) return null;
-  try {
-    await rename(path.join(TRASH_DIR, `${id}.pdf`), path.join(UPLOADS_DIR, `${id}.pdf`));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      // No file to bring back; drop the stale record so it cannot linger.
-      await writeTrash(records.filter((entry) => entry.item.id !== id));
-      return null;
+  return serialized(async () => {
+    const records = await readTrash();
+    const record = records.find((entry) => entry.item.id === id);
+    if (!record) return null;
+    const upload = path.join(UPLOADS_DIR, `${id}.pdf`);
+    if (!await fileExists(upload)) {
+      const source = await findStashedPdf(id);
+      if (!source) {
+        // No bytes to bring back; drop the stale record so it cannot linger.
+        await writeTrash(records.filter((entry) => entry.item.id !== id));
+        return null;
+      }
+      await rename(source, upload);
     }
-    throw error;
-  }
-  // Restore cover image if it was trashed alongside the PDF.
-  const coverName = record.item.coverFileName || (await findCoverFileName(TRASH_DIR, id));
-  if (coverName) {
-    try {
-      await rename(path.join(TRASH_DIR, coverName), path.join(COVERS_DIR, coverName));
-    } catch (error) {
-      void error;
+    const coverName = record.item.coverFileName
+      ?? (await findCoverFileName(TRASH_COVERS_DIR, id))
+      ?? (await findCoverFileName(TRASH_DIR, id));
+    if (coverName) {
+      const destination = path.join(COVERS_DIR, coverName);
+      await rename(path.join(TRASH_COVERS_DIR, coverName), destination)
+        .catch(() => rename(path.join(TRASH_DIR, coverName), destination))
+        .catch(() => {});
     }
-  }
-  const items = await readIndex();
-  if (!items.some((item) => item.id === id)) {
-    items.push(record.item);
-    await writeIndex(items);
-  }
-  await writeTrash(await purgeExpiredTrash(records.filter((entry) => entry.item.id !== id)));
-  return record.item;
+    const items = await readIndex();
+    if (!items.some((item) => item.id === id)) {
+      items.push(record.item);
+      await writeIndex(items);
+    }
+    await writeTrash(await purgeExpiredTrash(records.filter((entry) => entry.item.id !== id)));
+    return record.item;
+  });
 }
 
 export function pdfFilePath(id: string): string {
   return path.join(UPLOADS_DIR, `${id}.pdf`);
 }
-
-export async function pdfFileExists(id: string): Promise<boolean> {
-  if (!isValidPdfId(id)) return false;
-  try {
-    await stat(pdfFilePath(id));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export { createReadStream };

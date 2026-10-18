@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { stat } from "node:fs/promises";
-import { createReadStream, isValidPdfId } from "@/lib/pdf-store";
+import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
-import { resolveCoverFilePath, saveCover, deleteCover, listPdfs } from "@/lib/pdf-store";
+import { forbiddenHost } from "@/lib/host-guard";
+import { isValidPdfId, resolveCoverFilePath, saveCover, deleteCover } from "@/lib/pdf-store";
+import { isNotModified } from "@/lib/pdf-http";
 
 type Context = { params: Promise<{ id: string }> };
 
+// Every stored cover passed the byte-level image check in pdf-store, so the file
+// extension is trustworthy. Anything else is served as a download, never as a
+// type a browser would execute.
 const MIME_BY_EXT: Record<string, string> = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -13,17 +18,21 @@ const MIME_BY_EXT: Record<string, string> = {
   ".gif": "image/gif",
   ".webp": "image/webp",
   ".avif": "image/avif",
-  ".svg": "image/svg+xml",
   ".bmp": "image/bmp",
 };
 
-function mimeForPath(filePath: string, fallback?: string | null): string {
-  if (fallback) return fallback;
+function mimeForPath(filePath: string): string {
   const ext = filePath.slice(filePath.lastIndexOf(".")).toLowerCase();
-  return MIME_BY_EXT[ext] || "application/octet-stream";
+  return MIME_BY_EXT[ext] ?? "application/octet-stream";
+}
+
+function baseFileName(filePath: string): string {
+  return filePath.slice(filePath.lastIndexOf("/") + 1);
 }
 
 async function serveCover(request: Request, id: string) {
+  const forbidden = forbiddenHost(request);
+  if (forbidden) return forbidden;
   if (!isValidPdfId(id)) return new Response("Not found", { status: 404 });
   const filePath = await resolveCoverFilePath(id);
   if (!filePath) return new Response("Not found", { status: 404 });
@@ -34,17 +43,21 @@ async function serveCover(request: Request, id: string) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Response("Not found", { status: 404 });
     throw error;
   }
-  const items = await listPdfs().catch(() => []);
-  const item = items.find((entry) => entry.id === id);
-  const contentType = mimeForPath(filePath, item?.coverMimeType ?? null);
+  const etag = `"${baseFileName(filePath)}-${file.size.toString(16)}-${file.mtimeMs.toString(16)}"`;
   const headers: Record<string, string> = {
-    "Content-Type": contentType,
+    "Content-Type": mimeForPath(filePath),
     "Cache-Control": "private, max-age=3600, must-revalidate",
-    "Content-Length": String(file.size),
+    "ETag": etag,
+    "Last-Modified": file.mtime.toUTCString(),
     "X-Content-Type-Options": "nosniff",
   };
+  if (isNotModified(request.headers, etag, file.mtimeMs)) {
+    return new Response(null, { status: 304, headers });
+  }
+  headers["Content-Length"] = String(file.size);
   if (request.method === "HEAD") return new Response(null, { status: 200, headers });
-  const stream = createReadStream(filePath, { signal: request.signal });
+  const stream = createReadStream(filePath);
+  request.signal.addEventListener("abort", () => stream.destroy());
   return new Response(Readable.toWeb(stream) as ReadableStream, { status: 200, headers });
 }
 
@@ -57,8 +70,9 @@ export async function HEAD(request: Request, context: Context) {
 }
 
 export async function POST(request: Request, context: Context) {
+  const forbidden = forbiddenHost(request);
+  if (forbidden) return forbidden;
   const id = (await context.params).id;
-  if (!isValidPdfId(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   try {
     const contentType = request.headers.get("content-type") || "";
     let file: File | null = null;
@@ -86,9 +100,13 @@ export async function POST(request: Request, context: Context) {
     if (!file) {
       return NextResponse.json({ error: "No cover image provided" }, { status: 400 });
     }
-    const item = await saveCover(id, file);
-    if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ item }, { status: 201 });
+    const result = await saveCover(id, file);
+    if (!result.ok) {
+      return result.reason === "unsupported"
+        ? NextResponse.json({ error: "Unsupported cover image. Use PNG, JPEG, WebP, GIF, AVIF or BMP." }, { status: 400 })
+        : NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json({ item: result.item }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message || "Cover upload failed" }, { status: 500 });
   }
@@ -98,7 +116,9 @@ export async function PUT(request: Request, context: Context) {
   return POST(request, context);
 }
 
-export async function DELETE(_request: Request, context: Context) {
+export async function DELETE(request: Request, context: Context) {
+  const forbidden = forbiddenHost(request);
+  if (forbidden) return forbidden;
   const id = (await context.params).id;
   if (!isValidPdfId(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const ok = await deleteCover(id);

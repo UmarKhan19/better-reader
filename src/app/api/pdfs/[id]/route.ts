@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
+import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
-import { createReadStream, isValidPdfId, pdfFilePath, deletePdf, restorePdf } from "@/lib/pdf-store";
+import { forbiddenHost } from "@/lib/host-guard";
+import { isValidPdfId, pdfFilePath, deletePdf, restorePdf } from "@/lib/pdf-store";
 import { isNotModified, mayServeRange, parseByteRange } from "@/lib/pdf-http";
 
 async function servePdf(request: Request, id: string) {
+  const forbidden = forbiddenHost(request);
+  if (forbidden) return forbidden;
   if (!isValidPdfId(id)) return new Response("Not found", { status: 404 });
   const path = pdfFilePath(id);
   let file;
@@ -41,7 +45,10 @@ async function servePdf(request: Request, id: string) {
   if (range) headers["Content-Range"] = `bytes ${range.start}-${range.end}/${size}`;
   if (request.method === "HEAD") return new Response(null, { status, headers });
 
-  const stream = createReadStream(path, { ...(range ?? {}), signal: request.signal });
+  const stream = createReadStream(path, { ...(range ?? {}) });
+  // Destroying without an error on abort keeps a cancelled range request from
+  // turning into an unhandled stream error.
+  request.signal.addEventListener("abort", () => stream.destroy());
   return new Response(Readable.toWeb(stream) as ReadableStream, { status, headers });
 }
 
@@ -55,7 +62,9 @@ export async function HEAD(request: Request, context: Context) {
   return servePdf(request, (await context.params).id);
 }
 
-export async function DELETE(_request: Request, context: Context) {
+export async function DELETE(request: Request, context: Context) {
+  const forbidden = forbiddenHost(request);
+  if (forbidden) return forbidden;
   const ok = await deletePdf((await context.params).id);
   if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
@@ -63,6 +72,8 @@ export async function DELETE(_request: Request, context: Context) {
 
 /** Brings a deleted PDF back into the library (undo delete). */
 export async function POST(request: Request, context: Context) {
+  const forbidden = forbiddenHost(request);
+  if (forbidden) return forbidden;
   const url = new URL(request.url);
   if (url.searchParams.get("action") !== "restore") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

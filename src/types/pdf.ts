@@ -10,9 +10,8 @@ export type PdfItem = {
   cover?: string;
   coverImage?: string;
   coverUrl?: string;
-  coverPath?: string;
   coverFileName?: string;
-  coverMimeType?: string;
+  coverVersion?: string;
   coverExt?: string;
   thumbnail?: string;
   thumbnailUrl?: string;
