@@ -39,7 +39,7 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
       )}
     >
       <div className="flex min-h-[4.5rem] items-center justify-between gap-2 px-4 py-3 md:px-12 lg:px-16">
-        <span className={`${DISPLAY} whitespace-nowrap text-lg tracking-wider text-[#e50914] min-[360px]:text-xl sm:text-2xl md:text-3xl dark:text-[#ff3440] sm:dark:text-[#e50914]`}>Better Kindle</span>
+        <span className={`${DISPLAY} whitespace-nowrap text-lg tracking-wider text-[#e50914] min-[360px]:text-xl sm:text-2xl md:text-3xl dark:text-[#ff3440] sm:dark:text-[#e50914]`}>Better Reader</span>
         <div className="flex items-center gap-1 sm:gap-3">
           <div className="relative hidden lg:block">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />

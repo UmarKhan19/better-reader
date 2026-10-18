@@ -49,7 +49,7 @@ export function ReaderHeader(props: ReaderHeaderProps) {
       <div className={styles.titleGroup}>
         <Button variant="ghost" size="touch" className={styles.libraryLink} aria-label="Back to library" title="Back to library"
           nativeButton={false} render={<Link href="/" />}>
-          <ArrowLeft /><span className={styles.wordmark} aria-hidden="true">Better Kindle</span>
+          <ArrowLeft /><span className={styles.wordmark} aria-hidden="true">Better Reader</span>
           <span className={styles.compactWordmark} aria-hidden="true">BK</span>
         </Button>
         <div className={styles.desktopOnly}>

@@ -19,9 +19,9 @@ export function requestHostname(request: Request): string {
  * The library answers to localhost, private-network addresses and mDNS names.
  * Anything else is a rebinding attempt: a hostile page can point its own domain
  * at 127.0.0.1, so the Host header, not the network, is what has to be checked.
- * A reverse proxy on its own hostname is allowed through BETTER_KINDLE_ALLOWED_HOSTS.
+ * A reverse proxy on its own hostname is allowed through BETTER_READER_ALLOWED_HOSTS.
  */
-export function isAllowedHost(hostname: string, allowed = process.env.BETTER_KINDLE_ALLOWED_HOSTS ?? ""): boolean {
+export function isAllowedHost(hostname: string, allowed = process.env.BETTER_READER_ALLOWED_HOSTS ?? ""): boolean {
   const host = hostname.toLowerCase();
   if (allowed.split(",").some((value) => value.trim().toLowerCase() === host)) return true;
   if (host === "localhost" || host.endsWith(".local")) return true;
@@ -41,7 +41,7 @@ export function forbiddenHost(request: Request): Response | null {
   const host = requestHostname(request);
   if (isAllowedHost(host)) return null;
   return new Response(
-    `This library only answers to localhost, LAN addresses and names in BETTER_KINDLE_ALLOWED_HOSTS. Host: ${host}\n`,
+    `This library only answers to localhost, LAN addresses and names in BETTER_READER_ALLOWED_HOSTS. Host: ${host}\n`,
     { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } },
   );
 }

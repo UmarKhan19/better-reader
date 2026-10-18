@@ -45,7 +45,7 @@ test("settings validate values and recover from corrupt or unavailable storage",
     { ...DEFAULT_PREFERENCES, viewMode: "fit-page", zoom: 1.7, paper: "sepia" });
   assert.deepEqual(parsePreferences('{"paper":"dark"}'), { ...DEFAULT_PREFERENCES, paper: "dark" });
   assert.equal(readStorage("unavailable-in-node"), null);
-  assert.equal(storageKey("progress", "book"), "better-kindle:progress:book");
+  assert.equal(storageKey("progress", "book"), "better-reader:progress:book");
 });
 
 test("zoom is bounded and invalid zoom values recover", () => {
@@ -206,23 +206,23 @@ test("writeStorage reports the save outcome and keeps each key's failure separat
   const unsubscribe = subscribeStorageBlocked(() => { notifications += 1; });
   try {
     assert.equal(storageBlockedSnapshot(), false);
-    assert.equal(writeStorage("better-kindle:bookmarks", [1]), true);
-    assert.equal(store.get("better-kindle:bookmarks"), "[1]");
+    assert.equal(writeStorage("better-reader:bookmarks", [1]), true);
+    assert.equal(store.get("better-reader:bookmarks"), "[1]");
     assert.equal(notifications, 0);
-    failing = "better-kindle:bookmarks";
-    assert.equal(writeStorage("better-kindle:bookmarks", [2]), false);
+    failing = "better-reader:bookmarks";
+    assert.equal(writeStorage("better-reader:bookmarks", [2]), false);
     assert.equal(storageBlockedSnapshot(), true);
     assert.equal(notifications, 1);
-    assert.equal(store.get("better-kindle:bookmarks"), "[1]");
+    assert.equal(store.get("better-reader:bookmarks"), "[1]");
     // A later save of a different key must not hide the bookmarks failure.
     failing = null;
-    assert.equal(writeStorage("better-kindle:progress", { page: 3 }), true);
+    assert.equal(writeStorage("better-reader:progress", { page: 3 }), true);
     assert.equal(storageBlockedSnapshot(), true);
     assert.equal(notifications, 1);
-    assert.equal(writeStorage("better-kindle:bookmarks", [3]), true);
+    assert.equal(writeStorage("better-reader:bookmarks", [3]), true);
     assert.equal(storageBlockedSnapshot(), false);
     assert.equal(notifications, 2);
-    assert.equal(store.get("better-kindle:bookmarks"), "[3]");
+    assert.equal(store.get("better-reader:bookmarks"), "[3]");
   } finally {
     unsubscribe();
     delete globalScope.window;

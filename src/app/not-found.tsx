@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Not found, Better Kindle",
+  title: "Not found, Better Reader",
   description: "This page does not exist.",
 };
 
@@ -10,7 +10,7 @@ export default function NotFound() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-zinc-50 px-6 text-center dark:bg-black">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">
-        Better Kindle
+        Better Reader
       </p>
       <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
         This page doesn&apos;t exist

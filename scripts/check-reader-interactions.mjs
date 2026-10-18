@@ -17,8 +17,8 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const evaluate = expression => cdp.evaluate(expression);
 const wait = expression => waitFor(cdp, expression, timeout);
 const ready = page => wait(readyExpression(page));
-const settingKey = `better-kindle:settings:${id}`;
-const progressKey = `better-kindle:progress:${id}`;
+const settingKey = `better-reader:settings:${id}`;
+const progressKey = `better-reader:progress:${id}`;
 
 async function viewport(width, height, dpr = 1) {
   await cdp.send('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor: dpr, mobile: width < 600});

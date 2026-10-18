@@ -1,4 +1,4 @@
-# Design — Better Kindle Library
+# Design — Better Reader Library
 
 ## Visual world
 

@@ -10,8 +10,8 @@ type PageProps = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const item = await findPdf(id);
-  if (!item) return { title: "Not found, Better Kindle" };
-  return { title: `${item.name}, Better Kindle` };
+  if (!item) return { title: "Not found, Better Reader" };
+  return { title: `${item.name}, Better Reader` };
 }
 
 export default async function ReadPage({ params }: PageProps) {

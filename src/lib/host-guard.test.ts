@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { forbiddenHost, isAllowedHost, requestHostname } from "./host-guard";
 
 test("local and private hosts are allowed", () => {
-  for (const host of ["localhost", "127.0.0.1", "127.1.2.3", "10.0.0.8", "192.168.1.40", "172.16.0.1", "172.31.255.9", "kindle.local", "[::1]", "[fd00::8]", "[fe80::1a2b]"]) {
+  for (const host of ["localhost", "127.0.0.1", "127.1.2.3", "10.0.0.8", "192.168.1.40", "172.16.0.1", "172.31.255.9", "reader.local", "[::1]", "[fd00::8]", "[fe80::1a2b]"]) {
     assert.equal(isAllowedHost(host), true, host);
   }
 });
@@ -14,7 +14,7 @@ test("public names and addresses are rejected", () => {
   }
 });
 
-test("BETTER_KINDLE_ALLOWED_HOSTS opens exactly the listed names", () => {
+test("BETTER_READER_ALLOWED_HOSTS opens exactly the listed names", () => {
   assert.equal(isAllowedHost("books.example.com", "books.example.com"), true);
   assert.equal(isAllowedHost("books.example.com", "other.example.com, books.example.com"), true);
   assert.equal(isAllowedHost("books.example.com", "other.example.com"), false);

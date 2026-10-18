@@ -21,7 +21,7 @@ const bebasNeue = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Better Kindle",
+  title: "Better Reader",
   description: "Your personal PDF library.",
 };
 

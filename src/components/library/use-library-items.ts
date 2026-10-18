@@ -14,7 +14,7 @@ export function useLibraryItems() {
     if (typeof window === "undefined") return map;
     for (const item of items) {
       try {
-        const value = parseLibraryProgress(window.localStorage.getItem(`better-kindle:progress:${item.id}`));
+        const value = parseLibraryProgress(window.localStorage.getItem(`better-reader:progress:${item.id}`));
         if (value) map[item.id] = value;
       } catch {
         // Storage may be blocked; the library still works without saved progress.

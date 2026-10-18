@@ -12,7 +12,7 @@ People reading their uploaded PDFs in a browser, on desktop and mobile. Specific
 
 ## Product purpose
 
-Better Kindle provides a personal PDF library and a reader that keeps a reader's place, bookmarks, and reading preferences.
+Better Reader provides a personal PDF library and a reader that keeps a reader's place, bookmarks, and reading preferences.
 
 ## Operating context
 

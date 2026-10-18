@@ -4,13 +4,13 @@ import { chmod, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-// The store reads BETTER_KINDLE_DATA_DIR lazily, so this file owns a disposable
+// The store reads BETTER_READER_DATA_DIR lazily, so this file owns a disposable
 // data directory without changing the process working directory. Route handlers
 // are exercised here too: they share this module instance, so they must not have
 // a second importer in another test file.
-const dir = await mkdtemp(path.join(tmpdir(), "better-kindle-store-"));
-process.env.BETTER_KINDLE_DATA_DIR = path.join(dir, "data");
-assert.notEqual(path.resolve(process.env.BETTER_KINDLE_DATA_DIR), path.resolve(process.cwd(), "data"),
+const dir = await mkdtemp(path.join(tmpdir(), "better-reader-store-"));
+process.env.BETTER_READER_DATA_DIR = path.join(dir, "data");
+assert.notEqual(path.resolve(process.env.BETTER_READER_DATA_DIR), path.resolve(process.cwd(), "data"),
   "tests must never point at the real library");
 const store = await import("./pdf-store");
 const routes = {
@@ -21,7 +21,7 @@ const routes = {
 
 after(async () => {
   await chmod(path.join(dir, "data"), 0o755).catch(() => {});
-  delete process.env.BETTER_KINDLE_DATA_DIR;
+  delete process.env.BETTER_READER_DATA_DIR;
   await rm(dir, { recursive: true, force: true });
 });
 

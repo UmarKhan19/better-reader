@@ -33,7 +33,7 @@ export const DEFAULT_PREFERENCES: ReaderPreferences = {
 };
 
 export function storageKey(kind: "progress" | "settings" | "bookmarks", id: string) {
-  return `better-kindle:${kind}:${id}`;
+  return `better-reader:${kind}:${id}`;
 }
 
 export function readStorage(key: string): string | null {

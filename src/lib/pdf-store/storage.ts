@@ -3,14 +3,14 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { PdfItem } from "@/types/pdf";
 
-// Resolved at import time. Tests set BETTER_KINDLE_DATA_DIR before importing the
+// Resolved at import time. Tests set BETTER_READER_DATA_DIR before importing the
 // store; production reads the repository's data folder. Keeping these as module
 // constants also lets Turbopack see that every filesystem path is scoped to data/.
-if (process.env.NODE_ENV === "test" && !process.env.BETTER_KINDLE_DATA_DIR) {
+if (process.env.NODE_ENV === "test" && !process.env.BETTER_READER_DATA_DIR) {
   // A test run must never touch the real library.
-  throw new Error("Tests must set BETTER_KINDLE_DATA_DIR before importing pdf-store");
+  throw new Error("Tests must set BETTER_READER_DATA_DIR before importing pdf-store");
 }
-const DATA_DIR = process.env.BETTER_KINDLE_DATA_DIR ?? path.join(process.cwd(), "data");
+const DATA_DIR = process.env.BETTER_READER_DATA_DIR ?? path.join(process.cwd(), "data");
 export const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 export const COVERS_DIR = path.join(DATA_DIR, "covers");
 export const INDEX_FILE = path.join(DATA_DIR, "pdfs.json");

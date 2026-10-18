@@ -77,7 +77,7 @@ export function EmptyPosterWall() {
         <PosterArtwork title="The open book" mark="" className="h-full w-full" />
       </div>
       <div className="absolute bottom-2 left-1/2 z-10 aspect-[2/3] w-[31%] -translate-x-1/2 overflow-hidden rounded-sm ring-1 ring-black/10 shadow-xl shadow-black/20">
-        <PosterArtwork title="Better Kindle" className="h-full w-full" />
+        <PosterArtwork title="Better Reader" className="h-full w-full" />
       </div>
     </div>
   );

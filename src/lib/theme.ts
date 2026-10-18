@@ -1,6 +1,6 @@
 export type Theme = "system" | "light" | "dark";
 
-export const THEME_STORAGE_KEY = "better-kindle:theme";
+export const THEME_STORAGE_KEY = "better-reader:theme";
 
 // Keeps the chosen theme usable for this page even when storage refuses the write.
 let sessionTheme: Theme | null = null;

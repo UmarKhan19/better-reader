@@ -18,7 +18,7 @@ const url = `${origin}/read/${id}`;
 const api = `${origin}/api/pdfs/${id}`;
 if (screenshots) await mkdir(screenshots, { recursive: true });
 // A global persistent profile can defeat named-session isolation and lock Chrome.
-const profile = await mkdtemp(path.join(os.tmpdir(), "better-kindle-browser-"));
+const profile = await mkdtemp(path.join(os.tmpdir(), "better-reader-browser-"));
 const browserFlags = ["--session", session, "--profile", profile, "--headed", "false"];
 let browserStarted = false;
 
@@ -278,8 +278,8 @@ try {
     main.scrollTop += holder.getBoundingClientRect().height * 0.25;
   })()`);
   wait(`(() => { const stage=document.querySelector('[data-reader-stage]'), holder=stage.querySelector('[data-cached-page="'+stage.dataset.pageNumber+'"]'); return holder.getBoundingClientRect().top < document.querySelector('main').getBoundingClientRect().top - 20; })()`);
-  wait(`(() => { const saved=JSON.parse(localStorage.getItem('better-kindle:progress:${id}') ?? 'null'); return saved?.page === ${current} && saved.offset > 0 && saved.offset < 1; })()`);
-  const savedLocation = evaluate(`JSON.parse(localStorage.getItem('better-kindle:progress:${id}'))`);
+  wait(`(() => { const saved=JSON.parse(localStorage.getItem('better-reader:progress:${id}') ?? 'null'); return saved?.page === ${current} && saved.offset > 0 && saved.offset < 1; })()`);
+  const savedLocation = evaluate(`JSON.parse(localStorage.getItem('better-reader:progress:${id}'))`);
   assert.equal(savedLocation.page, current);
   assert.ok(savedLocation.offset > 0 && savedLocation.offset < 1);
   browser("reload");
