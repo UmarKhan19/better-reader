@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { TITLE_SMALL_WORDS } from "./library-model";
+import { TITLE_SMALL_WORDS } from "@/lib/pdf-title";
 import { DISPLAY } from "./library-styles";
 
 const POSTER_PALETTES = [

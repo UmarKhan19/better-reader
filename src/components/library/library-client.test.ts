@@ -83,7 +83,7 @@ test("uploads send one raw-body request per file with the name header and aggreg
   assert.equal(second.headers["x-file-name"], "b.pdf");
   second.upload.onprogress?.({ lengthComputable: true, loaded: 2, total: 2 });
   second.respond(201, JSON.stringify({ items: [{ ...item, name: "b.pdf" }] }));
-  assert.deepEqual(await promise, { items: [item, { ...item, name: "b.pdf" }], skipped: [] });
+  assert.deepEqual(await promise, { items: [item, { ...item, name: "b.pdf" }], skipped: [], failed: [] });
   assert.deepEqual(progress, [50, 100], "progress covers the whole batch");
 });
 
@@ -100,20 +100,46 @@ test("a file the server rejects becomes a per-file reason, not a failed batch", 
     { name: "notes.txt", reason: "not a PDF" },
     { name: "b.pdf", reason: "the upload was rejected" },
   ]);
+  assert.deepEqual(result.failed, []);
 });
 
-test("network failures and server errors reject so the caller can retry", async () => {
+test("server and network failures are reported as failed files instead of rejecting", async () => {
   mockUpload();
   const promise = uploadPdfs([new File(["x"], "a.pdf")], () => {});
   await Promise.resolve();
   UploadRequest.all[0].respond(500, JSON.stringify({ error: "couldn't be saved (no space left on the server)" }));
-  await assert.rejects(promise, /Couldn't upload/);
+  assert.deepEqual(await promise, { items: [], skipped: [], failed: [new File(["x"], "a.pdf")] });
 
   mockUpload();
   const disconnected = uploadPdfs([new File(["x"], "a.pdf")], () => {});
   await Promise.resolve();
   UploadRequest.all[0].onerror?.();
-  await assert.rejects(disconnected, /Couldn't upload/);
+  const result = await disconnected;
+  assert.equal(result.items.length, 0);
+  assert.equal(result.failed.length, 1);
+  assert.equal(result.failed[0].name, "a.pdf");
+});
+
+test("a partial batch keeps saved items and reports only the failed remainder", async () => {
+  mockUpload();
+  const files = [new File(["a"], "a.pdf", { type: "application/pdf" }), new File(["b"], "b.pdf", { type: "application/pdf" })];
+  const promise = uploadPdfs(files, () => {});
+  await Promise.resolve();
+  UploadRequest.all[0].respond(201, JSON.stringify({ items: [item] }));
+  await Promise.resolve();
+  UploadRequest.all[1].respond(500, JSON.stringify({ error: "boom" }));
+  const result = await promise;
+  assert.deepEqual(result.items, [item]);
+  assert.deepEqual(result.skipped, []);
+  assert.deepEqual(result.failed, [files[1]]);
+
+  mockUpload();
+  const retryPromise = uploadPdfs(result.failed, () => {});
+  await Promise.resolve();
+  UploadRequest.all[0].respond(201, JSON.stringify({ items: [{ ...item, name: "b.pdf" }] }));
+  const retryResult = await retryPromise;
+  assert.deepEqual(retryResult.items, [{ ...item, name: "b.pdf" }]);
+  assert.deepEqual(retryResult.failed, []);
 });
 
 test("a success reply without an item is reported honestly instead of silently dropped", async () => {
@@ -125,6 +151,7 @@ test("a success reply without an item is reported honestly instead of silently d
     assert.deepEqual(await promise, {
       items: [],
       skipped: [{ name: "a.pdf", reason: "saved, but the reply couldn't be read — reload the library" }],
+      failed: [],
     });
   }
 });

@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { PdfItem } from "@/types/pdf";
+import { displayName } from "@/lib/pdf-title";
 import {
-  coverSrc, displayName, formatBytes, formatDate, isFinished, mergeUploadedItems,
+  coverSrc, formatBytes, formatDate, isFinished, mergeUploadedItems,
   parseLibraryProgress, progressPercent, selectReadingItems, selectVisibleItems, uploadNotice, withoutCover,
 } from "./library-model";
 
@@ -77,17 +78,17 @@ test("the reading shelf preserves library order and still includes finished titl
   }), [items[0], items[2]]);
 });
 
-test("cover resolution respects alias precedence and removal clears every displayed alias", () => {
-  const aliases = ["coverUrl", "cover", "coverImage", "thumbnailUrl", "thumbnail"] as const;
-  let item = { ...pdf("book"), hasCover: true };
-  assert.equal(coverSrc(item), "/api/pdfs/book/cover");
-  for (const alias of [...aliases].reverse()) {
-    item = { ...item, [alias]: `/${alias}.png` };
-    assert.equal(coverSrc(item), `/${alias}.png`);
-  }
+test("cover resolution uses the canonical URL and removal clears cover metadata", () => {
+  const item = {
+    ...pdf("book"), hasCover: true, coverUrl: "/api/pdfs/book/cover?v=1",
+    coverFileName: "book.png", coverVersion: "1",
+  };
+  assert.equal(coverSrc(item), "/api/pdfs/book/cover?v=1");
   const removed = withoutCover(item);
   assert.equal(coverSrc(removed), undefined);
   assert.equal(removed.hasCover, false);
+  assert.equal(removed.coverFileName, undefined);
+  assert.equal(removed.coverVersion, undefined);
   assert.equal(removed.id, item.id);
   assert.equal(item.hasCover, true);
 });
@@ -107,5 +108,17 @@ test("upload notices distinguish complete, partial and entirely skipped batches"
   });
   assert.deepEqual(uploadNotice(0, skipped), {
     tone: "warning", text: "No files were uploaded.", details: ["notes.txt, not a PDF"],
+  });
+});
+
+test("upload notices treat failed uploads as partial or complete failures", () => {
+  assert.deepEqual(uploadNotice(1, [], 1), {
+    tone: "warning", text: "1 PDF uploaded, 1 failed.", details: [],
+  });
+  assert.deepEqual(uploadNotice(0, [], 1), {
+    tone: "error", text: "Couldn't upload. Check your connection and try again.", details: [],
+  });
+  assert.deepEqual(uploadNotice(1, [{ name: "notes.txt", reason: "not a PDF" }], 1), {
+    tone: "warning", text: "1 PDF uploaded, 1 skipped, 1 failed.", details: ["notes.txt, not a PDF"],
   });
 });

@@ -1,4 +1,5 @@
 import type { PdfItem } from "@/types/pdf";
+import { displayName } from "@/lib/pdf-title";
 
 export type SortMode = "recent" | "name";
 export type ReadingProgress = { page: number; numPages: number };
@@ -8,10 +9,6 @@ export type LibraryNotice = {
   details?: string[];
   undo?: PdfItem;
 };
-
-export const TITLE_SMALL_WORDS: ReadonlySet<string> = new Set([
-  "a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with",
-]);
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -32,18 +29,6 @@ export function formatDate(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-/** The filename is the only title we have; preserve existing capitalization. */
-export function displayName(name: string): string {
-  const base = name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
-  if (!base) return name;
-  if (base !== base.toLowerCase()) return base;
-  return base.split(" ").map((word, index) => {
-    const bare = word.replace(/[^a-z0-9]/gi, "");
-    if (index > 0 && TITLE_SMALL_WORDS.has(bare)) return word;
-    return word.charAt(0).toUpperCase() + word.slice(1);
-  }).join(" ");
 }
 
 /** Missing progress must stay distinct from a reader's default page of 1. */
@@ -77,14 +62,12 @@ export function isFinished(value?: ReadingProgress): boolean {
 }
 
 export function coverSrc(item: PdfItem): string | undefined {
-  return item.coverUrl || item.cover || item.coverImage || item.thumbnailUrl || item.thumbnail
-    || (item.hasCover ? `/api/pdfs/${item.id}/cover` : undefined);
+  return item.coverUrl;
 }
 
 export function withoutCover(item: PdfItem): PdfItem {
   return {
-    ...item, hasCover: false, cover: undefined, coverImage: undefined,
-    coverUrl: undefined, thumbnail: undefined, thumbnailUrl: undefined,
+    ...item, hasCover: false, coverUrl: undefined, coverFileName: undefined, coverVersion: undefined,
   };
 }
 
@@ -108,10 +91,24 @@ export function mergeUploadedItems(items: PdfItem[], saved: PdfItem[]): PdfItem[
   return [...saved.filter((item) => !ids.has(item.id)), ...items];
 }
 
-export function uploadNotice(saved: number, skipped: ReadonlyArray<{ name: string; reason: string }>): LibraryNotice {
+export function uploadNotice(
+  saved: number,
+  skipped: ReadonlyArray<{ name: string; reason: string }>,
+  failedCount = 0,
+): LibraryNotice {
   const details = skipped.map((file) => `${file.name}, ${file.reason}`);
-  if (saved === 0) return { tone: "warning", text: "No files were uploaded.", details };
+  if (saved === 0 && failedCount > 0) {
+    return { tone: "error", text: "Couldn't upload. Check your connection and try again.", details };
+  }
+  if (saved === 0) {
+    return { tone: "warning", text: "No files were uploaded.", details };
+  }
   const uploaded = `${saved} ${saved === 1 ? "PDF" : "PDFs"} uploaded`;
-  if (skipped.length) return { tone: "warning", text: `${uploaded}, ${skipped.length} skipped.`, details };
+  if (skipped.length || failedCount > 0) {
+    const parts: string[] = [];
+    if (skipped.length) parts.push(`${skipped.length} skipped`);
+    if (failedCount > 0) parts.push(`${failedCount} failed`);
+    return { tone: "warning", text: `${uploaded}, ${parts.join(", ")}.`, details };
+  }
   return { tone: "success", text: `${uploaded}.` };
 }

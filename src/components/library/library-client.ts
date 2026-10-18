@@ -2,7 +2,7 @@ import type { PdfItem } from "@/types/pdf";
 
 export type SkippedFile = { name: string; reason: string };
 type UploadResponse = { items?: PdfItem[] };
-export type UploadResult = { items: PdfItem[]; skipped: SkippedFile[] };
+export type UploadResult = { items: PdfItem[]; skipped: SkippedFile[]; failed: File[] };
 
 /** Must match the server's rule in app/api/pdfs/route.ts; the server re-checks anyway. */
 function isPdfFile(file: File) {
@@ -61,22 +61,30 @@ export async function uploadPdfs(files: readonly File[], onProgress: (percent: n
   const total = Math.max(1, files.reduce((sum, file) => sum + file.size, 0));
   const items: PdfItem[] = [];
   const skipped: SkippedFile[] = [];
+  const failed: File[] = [];
   let done = 0;
-  for (const file of files) {
+  const list = Array.from(files);
+  for (let index = 0; index < list.length; index += 1) {
+    const file = list[index];
     const name = file.name || "Unnamed file";
     if (isPdfFile(file)) {
       try {
         items.push(await uploadPdf(file, (loaded) => onProgress(Math.round(((done + loaded) / total) * 100))));
       } catch (error) {
-        if (!(error instanceof UploadRejected)) throw error;
-        skipped.push({ name, reason: error.message });
+        if (error instanceof UploadRejected) {
+          skipped.push({ name, reason: error.message });
+        } else {
+          failed.push(file, ...list.slice(index + 1));
+          done += file.size;
+          break;
+        }
       }
     } else {
       skipped.push({ name, reason: "not a PDF" });
     }
     done += file.size;
   }
-  return { items, skipped };
+  return { items, skipped, failed };
 }
 
 export async function deletePdf(id: string): Promise<void> {

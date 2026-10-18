@@ -4,7 +4,8 @@ import { ChevronDown, Play } from "lucide-react";
 import type { PdfItem } from "@/types/pdf";
 import { cn } from "@/lib/utils";
 import { PosterArtwork } from "./library-artwork";
-import { coverSrc, displayName, formatBytes, formatDate, isFinished, progressPercent, type ReadingProgress } from "./library-model";
+import { displayName } from "@/lib/pdf-title";
+import { coverSrc, formatBytes, formatDate, isFinished, progressPercent, type ReadingProgress } from "./library-model";
 import { DISPLAY, FOCUS_OFFSET, FOCUS_RED } from "./library-styles";
 
 export function LibraryHero({ item, progress, coverFailed, onCoverError }: {

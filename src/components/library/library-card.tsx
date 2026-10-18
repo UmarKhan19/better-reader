@@ -6,7 +6,8 @@ import type { PdfItem } from "@/types/pdf";
 import { cn } from "@/lib/utils";
 import { prewarmReader } from "@/components/reader/reader-preload";
 import { PosterArtwork } from "./library-artwork";
-import { coverSrc, displayName, isFinished, progressPercent, type ReadingProgress } from "./library-model";
+import { displayName } from "@/lib/pdf-title";
+import { coverSrc, isFinished, progressPercent, type ReadingProgress } from "./library-model";
 
 export type LibraryCardProps = {
   item: PdfItem;
