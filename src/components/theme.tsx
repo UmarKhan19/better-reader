@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useSyncExternalStore } from "react";
-import { SunMoon } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   applyTheme, readTheme, resolveDark, subscribeSystemTheme, subscribeTheme, systemPrefersDark,
@@ -14,12 +14,17 @@ export { THEME_STORAGE_KEY, readTheme, writeTheme, type Theme } from "@/lib/them
 export function useTheme() {
   const theme = useSyncExternalStore(subscribeTheme, readTheme, () => "system" as Theme);
   const systemDark = useSyncExternalStore(subscribeSystemTheme, systemPrefersDark, () => false);
-  // Re-applies after React clears the <html> attributes on the development remount.
   useLayoutEffect(() => {
     applyTheme(theme);
   }, [theme, systemDark]);
   return { theme, dark: resolveDark(theme, systemDark), setTheme: writeTheme };
 }
+
+const OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
+  { value: "system", label: "System", Icon: Monitor },
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+];
 
 export function ThemeSelect({
   className,
@@ -30,21 +35,29 @@ export function ThemeSelect({
 }) {
   const { theme, setTheme } = useTheme();
   return (
-    <label className={cn("flex items-center gap-2 text-zinc-500 dark:text-zinc-400", className)}>
-      <SunMoon className="h-4 w-4" aria-hidden="true" />
-      <span className="sr-only">Interface theme</span>
-      <select
-        value={theme}
-        onChange={(event) => {
-          const saved = setTheme(event.target.value as Theme);
-          if (!saved) onStorageFailure?.(event.target.value as Theme);
-        }}
-        className="h-11 rounded-lg border border-zinc-300 bg-white px-2 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-      >
-        <option value="system">System</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
-    </label>
+    <div className={cn("inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-white/5", className)}>
+      {OPTIONS.map(({ value, label, Icon }) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => {
+            const saved = setTheme(value);
+            if (!saved) onStorageFailure?.(value);
+          }}
+          aria-pressed={theme === value}
+          aria-label={`Use ${label.toLowerCase()} theme`}
+          title={label}
+          className={cn(
+            "grid h-9 w-9 place-items-center rounded-full transition-colors sm:h-8 sm:w-8",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]",
+            theme === value
+              ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100",
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      ))}
+    </div>
   );
 }
