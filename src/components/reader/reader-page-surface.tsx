@@ -9,6 +9,7 @@ import { ReaderRasterBudget, rasterPixels, type RasterReservation } from "./read
 import { readerRenderQueue, type RenderPriority } from "./reader-render-scheduler";
 import { renderedInkCrop, paperColor } from "./reader-crop";
 import { FULL_PAGE, type CropBox, type PageBox } from "./reader-geometry";
+import type { PdfPageColors } from "./reader-state";
 import { finishRaster, requestRaster, type RasterFrame, type RasterState } from "./reader-render-state";
 import { visibleTiles, type ReaderTile, type VisibleRect } from "./reader-tiles";
 import { pageTextRenderer, type ReaderHighlightText } from "./reader-text-renderer";
@@ -39,7 +40,7 @@ function BudgetedRaster({ frame, budget, retained, onPromoted, ...props }: Sched
   return permitted ? <ScheduledPdfPage {...props} onRenderSuccess={rendered} /> : null;
 }
 
-function Tile({ pdf, pageNumber, fullWidth, tile, pageColors }: { pdf: PDFDocumentProxy; pageNumber: number; fullWidth: number; tile: ReaderTile; pageColors?: { background: string; foreground: string } | null }) {
+function Tile({ pdf, pageNumber, fullWidth, tile, pageColors }: { pdf: PDFDocumentProxy; pageNumber: number; fullWidth: number; tile: ReaderTile; pageColors?: PdfPageColors }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const { x, y, pixelWidth, pixelHeight, ratio } = tile;
@@ -102,7 +103,7 @@ export const ReaderPageSurface = memo(function ReaderPageSurface({ pdf, box, rat
   highlightText, pageColors, onCrop, onStatus, onSize, sizeKnown, budget, presentation = "visible" }: {
   pdf: PDFDocumentProxy; box: PageBox; ratio: number; priority: RenderPriority; visible: VisibleRect; tileLimit: number; crop: boolean;
   highlightText?: ReaderHighlightText;
-  pageColors?: { background: string; foreground: string } | null;
+  pageColors?: PdfPageColors;
   onCrop: (page: number, crop: CropBox) => void;
   onStatus: (page: number, identity: string, busy: boolean, readable: boolean, ready: boolean) => void;
   onSize: (page: number, size: { width: number; height: number }) => void;

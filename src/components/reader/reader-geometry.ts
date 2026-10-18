@@ -1,7 +1,8 @@
-import { pageSize, type Size, type ViewMode } from "./reader-state";
+import {
+  pageSize, type ReaderLayout, type ReadingLocation, type Size, type ViewMode,
+} from "./reader-state";
 
-export type ReaderLayout = "continuous" | "single" | "spread";
-export type ReadingLocation = { page: number; offset: number };
+export type { ReaderLayout, ReadingLocation } from "./reader-state";
 export type CropBox = { x: number; y: number; width: number; height: number };
 export const FULL_PAGE: CropBox = { x: 0, y: 0, width: 1, height: 1 };
 export const ESTIMATED_PAGE: Size = { width: 612, height: 792 };
