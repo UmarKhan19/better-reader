@@ -161,12 +161,14 @@ export const ReaderPageSurface = memo(function ReaderPageSurface({ pdf, box, rat
         renderMode="none" renderTextLayer={false} renderAnnotationLayer={false} loading="" error="" suspense={false}
         pageColors={pageColors ?? undefined}
         onLoadSuccess={loaded} onLoadError={() => { if (alive.current) setFailed(target.key); }} />}
+      {/* Every canvas bakes pageColors into itself: tiles only cover the visible
+          area, so a bare raster would stay white wherever they are missing. */}
       {entries.map((frame) => {
         const shown = frame.key === frames.shown?.key;
         return <div key={frame.key} className={styles.raster} aria-hidden={!shown} inert={!shown}
           style={{ visibility: shown ? "visible" : "hidden", transform: `scale(${box.fullWidth / frame.width})`, width: frame.width }}>
           <BudgetedRaster pdf={pdf} pageNumber={box.page} priority={priority} width={frame.width} devicePixelRatio={frame.ratio}
-            frame={frame} budget={budget} retained={presentation === "retained"}
+            frame={frame} budget={budget} retained={presentation === "retained"} pageColors={pageColors ?? undefined}
             onPromoted={() => { if (alive.current) setFrames((state) => finishRaster(state, frame.key)); }}
             canvasRef={(canvas) => storeCanvas(frame.key, canvas)}
             renderTextLayer renderAnnotationLayer customTextRenderer={textRenderer}
