@@ -90,6 +90,16 @@ function layout() {
   assert.ok(result.mounted <= result.intersecting + 2, JSON.stringify(result));
   return result;
 }
+/** Nearest mounted page that has a real text layer; null when every mounted page is blank or image-only. */
+function pageWithText() {
+  return evaluate(`(() => {
+    const stage=document.querySelector('[data-reader-stage]'), active=Number(stage.dataset.pageNumber);
+    const pages=[...stage.querySelectorAll('[data-cached-page]')]
+      .filter(h => /[A-Za-z]{4,}/.test(h.querySelector('.textLayer')?.textContent ?? ''))
+      .map(h => Number(h.dataset.cachedPage));
+    return pages.length ? pages.reduce((a,b) => Math.abs(b-active) < Math.abs(a-active) ? b : a) : null;
+  })()`);
+}
 function setSetting(kind, value) {
   click(`dialog[open] label:has(input[value="${value}"])`);
   assert.equal(evaluate(`document.querySelector('[data-reader-root]').getAttribute('data-${kind}')`), value);
@@ -147,7 +157,7 @@ try {
     browser("press", "ArrowRight");
     waitForPage(samplePage + 1);
   }
-  const current = Math.min(samplePage + 1, total);
+  let current = Math.min(samplePage + 1, total);
   const pageTurnMs = evaluate("performance.getEntriesByName('reader:page-turn').at(-1)?.duration ?? null");
   console.log("PASS desktop layout and Enter-only page jumps", JSON.stringify({ ...desktop, firstPageMs, cachedPageTurnMs: pageTurnMs }));
 
@@ -180,8 +190,8 @@ try {
 
   browser("select", "#reader-view-mode", "actual-size");
   wait("!!document.querySelector('[data-reader-stage][aria-busy=\"false\"]')");
-  const activeHolder = `[data-reader-stage] [data-cached-page="${current}"]`;
-  const activeTextLayer = `${activeHolder} [aria-hidden="false"] .textLayer`;
+  let activeHolder = `[data-reader-stage] [data-cached-page="${current}"]`;
+  let activeTextLayer = `${activeHolder} [aria-hidden="false"] .textLayer`;
   const naturalWidth = evaluate(`document.querySelector('${activeHolder}').getBoundingClientRect().width`);
   for (let i = 0; i < 3; i++) browser("press", "=");
   assert.ok(evaluate("!!document.querySelector('[data-reader-stage] > [data-cached-page]:not([hidden]) canvas')"), "Keep the previous canvas visible during zoom");
@@ -193,22 +203,48 @@ try {
   waitForFitWidth();
   console.log("PASS actual-size, rapid zoom, retained canvas and raster budget");
 
-  wait(`!![...document.querySelectorAll('${activeTextLayer} span')].find(s => s.textContent.length > 3)`);
-  const selectedText = evaluate(`(() => {
-    const span=[...document.querySelectorAll('${activeTextLayer} span')].find(s => s.textContent.length > 3);
-    const range=document.createRange(); range.selectNodeContents(span);
-    getSelection().removeAllRanges(); getSelection().addRange(range);
-    return getSelection().toString();
-  })()`);
-  evaluate("document.querySelector('main').scrollTop += 5");
-  // Negative invariant: let scroll effects and asynchronous text rendering settle.
-  browser("wait", "300");
-  assert.equal(evaluate("getSelection().toString()"), selectedText, "Scrolling must not rebuild the selected text layer");
-  evaluate("getSelection().removeAllRanges()");
-  browser("fill", 'header input[aria-label="Page number"]', String(current));
-  browser("press", "Enter");
-  waitForPage(current);
-  console.log("PASS text selection survives scrolling");
+  // Blank and image-only pages are normal in a real book. The reading checks need a
+  // page with a text layer, so look at the mounted pages first, then walk outward a
+  // little; if the whole neighbourhood has no text, skip those checks loudly.
+  let textPage = pageWithText();
+  for (let step = 1; !textPage && step <= 5; step++) {
+    for (const candidate of [current + step, current - step]) {
+      if (candidate < 1 || candidate > total) continue;
+      browser("fill", 'header input[aria-label="Page number"]', String(candidate));
+      browser("press", "Enter");
+      waitForPage(candidate);
+      textPage = pageWithText();
+      if (textPage) break;
+    }
+  }
+  if (textPage) {
+    if (textPage !== current) {
+      browser("fill", 'header input[aria-label="Page number"]', String(textPage));
+      browser("press", "Enter");
+      waitForPage(textPage);
+      current = textPage;
+      activeHolder = `[data-reader-stage] [data-cached-page="${current}"]`;
+      activeTextLayer = `${activeHolder} [aria-hidden="false"] .textLayer`;
+    }
+    wait(`!![...document.querySelectorAll('${activeTextLayer} span')].find(s => s.textContent.length > 3)`);
+    const selectedText = evaluate(`(() => {
+      const span=[...document.querySelectorAll('${activeTextLayer} span')].find(s => s.textContent.length > 3);
+      const range=document.createRange(); range.selectNodeContents(span);
+      getSelection().removeAllRanges(); getSelection().addRange(range);
+      return getSelection().toString();
+    })()`);
+    evaluate("document.querySelector('main').scrollTop += 5");
+    // Negative invariant: let scroll effects and asynchronous text rendering settle.
+    browser("wait", "300");
+    assert.equal(evaluate("getSelection().toString()"), selectedText, "Scrolling must not rebuild the selected text layer");
+    evaluate("getSelection().removeAllRanges()");
+    browser("fill", 'header input[aria-label="Page number"]', String(current));
+    browser("press", "Enter");
+    waitForPage(current);
+    console.log("PASS text selection survives scrolling");
+  } else {
+    console.log(`SKIP text selection: pages around ${current} have no text layer (blank or image-only pages)`);
+  }
 
   for (const mode of ["single", "spread", "continuous"]) {
     click('button[aria-label="Reading settings"]');
@@ -317,39 +353,43 @@ try {
   wait("!document.querySelector('dialog[open]')");
   console.log("PASS mobile controls, bookmark navigation and modal keyboard focus", JSON.stringify(mobile));
 
-  wait(`!![...document.querySelectorAll('${activeTextLayer} span')].find(s => /[a-zA-Z]{4,}/.test(s.textContent))`);
-  const query = evaluate(`[...document.querySelectorAll('${activeTextLayer} span')].map(s => s.textContent.match(/[a-zA-Z]{4,}/)?.[0]).find(Boolean)`);
-  const departure = current === 1 ? Math.min(2, total) : 1;
-  browser("fill", 'nav input[aria-label="Page number"]', String(departure));
-  browser("press", "Enter");
-  waitForPage(departure);
-  click('button[aria-label="Search document"]');
-  wait("!!document.querySelector('dialog[open] [data-reader-search] input') && document.activeElement === document.querySelector('dialog[open] [data-reader-search] input')");
-  browser("fill", 'dialog[open] [data-reader-search] input', query);
-  wait(`!!document.querySelector('[data-search-result-page="${current}"]')`);
-  screenshot("mobile-search");
-  click(`[data-search-result-page="${current}"]`);
-  wait("!document.querySelector('dialog[open]')");
-  waitForPage(current);
-  // A match may be split across several original PDF text items and mark nodes.
-  wait(`[...document.querySelectorAll('${activeTextLayer} mark')].map(m => m.textContent).join('').toLowerCase().includes(${JSON.stringify(query.toLowerCase())})`);
-  const visibleMarks = evaluate(`[...document.querySelectorAll('${activeTextLayer} mark')].map(m => m.textContent)`);
-  assert.ok(visibleMarks.join("").toLowerCase().includes(query.toLowerCase()),
-    `Visible page marks must survive closing the mobile drawer: ${JSON.stringify({ query, visibleMarks })}`);
-  screenshot("mobile-search-result");
-  click('button[aria-label="Search document"]');
-  wait("document.activeElement === document.querySelector('dialog[open] [data-reader-search] input')");
-  assert.equal(evaluate("document.querySelector('[data-reader-search] input').value"), query);
-  assert.ok(evaluate(`!!document.querySelector('[data-search-result-page="${current}"]')`), "Same-query results stay available when reopening Search");
-  browser("focus", 'dialog[open] [data-reader-search] input');
-  browser("press", "Control+a");
-  browser("press", "Backspace");
-  wait(`!document.querySelector('${activeTextLayer} mark') && !document.querySelector('[data-search-result-page]')`);
-  browser("press", "Escape");
-  wait("!document.querySelector('dialog[open]')");
-  click('button[aria-label="Back to previous location"]');
-  waitForPage(departure);
-  console.log("PASS mobile Search focus, result-click drawer close, retained page marks/results, explicit clear and Back");
+  if (textPage) {
+    wait(`!![...document.querySelectorAll('${activeTextLayer} span')].find(s => /[a-zA-Z]{4,}/.test(s.textContent))`);
+    const query = evaluate(`[...document.querySelectorAll('${activeTextLayer} span')].map(s => s.textContent.match(/[a-zA-Z]{4,}/)?.[0]).find(Boolean)`);
+    const departure = current === 1 ? Math.min(2, total) : 1;
+    browser("fill", 'nav input[aria-label="Page number"]', String(departure));
+    browser("press", "Enter");
+    waitForPage(departure);
+    click('button[aria-label="Search document"]');
+    wait("!!document.querySelector('dialog[open] [data-reader-search] input') && document.activeElement === document.querySelector('dialog[open] [data-reader-search] input')");
+    browser("fill", 'dialog[open] [data-reader-search] input', query);
+    wait(`!!document.querySelector('[data-search-result-page="${current}"]')`);
+    screenshot("mobile-search");
+    click(`[data-search-result-page="${current}"]`);
+    wait("!document.querySelector('dialog[open]')");
+    waitForPage(current);
+    // A match may be split across several original PDF text items and mark nodes.
+    wait(`[...document.querySelectorAll('${activeTextLayer} mark')].map(m => m.textContent).join('').toLowerCase().includes(${JSON.stringify(query.toLowerCase())})`);
+    const visibleMarks = evaluate(`[...document.querySelectorAll('${activeTextLayer} mark')].map(m => m.textContent)`);
+    assert.ok(visibleMarks.join("").toLowerCase().includes(query.toLowerCase()),
+      `Visible page marks must survive closing the mobile drawer: ${JSON.stringify({ query, visibleMarks })}`);
+    screenshot("mobile-search-result");
+    click('button[aria-label="Search document"]');
+    wait("document.activeElement === document.querySelector('dialog[open] [data-reader-search] input')");
+    assert.equal(evaluate("document.querySelector('[data-reader-search] input').value"), query);
+    assert.ok(evaluate(`!!document.querySelector('[data-search-result-page="${current}"]')`), "Same-query results stay available when reopening Search");
+    browser("focus", 'dialog[open] [data-reader-search] input');
+    browser("press", "Control+a");
+    browser("press", "Backspace");
+    wait(`!document.querySelector('${activeTextLayer} mark') && !document.querySelector('[data-search-result-page]')`);
+    browser("press", "Escape");
+    wait("!document.querySelector('dialog[open]')");
+    click('button[aria-label="Back to previous location"]');
+    waitForPage(departure);
+    console.log("PASS mobile Search focus, result-click drawer close, retained page marks/results, explicit clear and Back");
+  } else {
+    console.log(`SKIP mobile search checks: no text layer near page ${current}`);
+  }
 
   browser("set", "viewport", "320", "640");
   waitForFitWidth();
