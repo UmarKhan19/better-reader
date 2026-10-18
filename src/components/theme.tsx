@@ -7,7 +7,7 @@ import {
   applyTheme, readTheme, resolveDark, subscribeSystemTheme, subscribeTheme, systemPrefersDark,
   THEME_STORAGE_KEY, writeTheme, type Theme,
 } from "@/lib/theme";
-import { markStorageResult } from "./reader/reader-state";
+import { markStorageResult } from "@/lib/storage-health";
 
 export { THEME_STORAGE_KEY, readTheme, writeTheme, type Theme } from "@/lib/theme";
 

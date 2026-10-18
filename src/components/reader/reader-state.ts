@@ -1,3 +1,9 @@
+import { markStorageResult } from "@/lib/storage-health";
+
+export {
+  markStorageResult, storageBlockedSnapshot, subscribeStorageBlocked,
+} from "@/lib/storage-health";
+
 export type ViewMode = "fit-width" | "fit-page" | "actual-size" | "custom";
 export type PaperMode = "original" | "dimmed" | "sepia" | "dark";
 export type PdfPageColors = { background: string; foreground: string } | null;
@@ -36,33 +42,6 @@ export function readStorage(key: string): string | null {
   } catch {
     return null;
   }
-}
-
-// Storage health is an external store: every write records whether the browser kept
-// the value, keyed by that value's own key. A successful write of one key never
-// hides the failure of another.
-const failedStorageKeys = new Set<string>();
-let storageBlocked = false;
-const storageBlockedListeners = new Set<() => void>();
-
-export function storageBlockedSnapshot() {
-  return storageBlocked;
-}
-
-export function subscribeStorageBlocked(listener: () => void) {
-  storageBlockedListeners.add(listener);
-  return () => {
-    storageBlockedListeners.delete(listener);
-  };
-}
-
-export function markStorageResult(key: string, saved: boolean) {
-  if (saved) failedStorageKeys.delete(key);
-  else failedStorageKeys.add(key);
-  const blocked = failedStorageKeys.size > 0;
-  if (storageBlocked === blocked) return;
-  storageBlocked = blocked;
-  for (const listener of storageBlockedListeners) listener();
 }
 
 /** Returns false when the browser refuses to keep the value, so callers can say saving failed. */
