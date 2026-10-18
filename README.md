@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Better Kindle
 
-## Getting Started
+A personal PDF library and reader for the browser. Upload your own PDFs, they are
+stored on this machine, and you read them with a scroll-first reader that remembers
+your page, bookmarks and preferences per book.
 
-First, run the development server:
+## Run it
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Requires [Bun](https://bun.sh) (or Node 22+ with npm).
+
+```sh
+bun install
+bun run dev        # http://127.0.0.1:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For the production build:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+bun run build
+bun run start      # http://127.0.0.1:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Both commands bind to `127.0.0.1`, so only this machine can reach the app. There is
+no login: anyone who can open the URL can read, upload and delete your books.
 
-## Learn More
+To read from your phone on the same network, expose it deliberately:
 
-To learn more about Next.js, take a look at the following resources:
+```sh
+bun run start -- --hostname 0.0.0.0
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Then open `http://<this-machine-ip>:3000`. Anyone on that network can reach the same
+library, so only do this on a network you trust.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The API answers only to localhost, LAN addresses and `.local` names. Something that
+reaches it under another hostname — a reverse proxy, say — must be allowed first:
 
-## Deploy on Vercel
+```sh
+BETTER_KINDLE_ALLOWED_HOSTS=books.home.lan bun run start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This is what stops a hostile web page from pointing its own domain at
+`127.0.0.1` and reading your library through the browser.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Run one server process at a time against the same `data/` folder. The library index
+is a JSON file, and the server serializes writes inside itself only.
+
+## Where your files live
+
+Everything is under `data/` in the project folder:
+
+- `data/uploads/` the original PDFs, byte for byte
+- `data/covers/` cover images
+- `data/pdfs.json` the library index
+- `data/trash/` deleted PDFs and covers, plus `data/trash.json`. Deleted books can be
+  undone from the library for 30 days, then they are purged on the next delete or
+  restore.
+
+Back up the library by copying `data/`. The app never rewrites an uploaded PDF.
+
+## Checks
+
+```sh
+bun test                                   # unit tests (file store, parsers, budgets)
+bun run lint
+bun run build
+```
+
+The reader checks drive a real browser against a running production server. They need
+Node 22+, an existing Chromium and an existing PDF in the library. See
+[docs/reader-performance.md](docs/reader-performance.md) for the full matrix,
+benchmark variables and recorded numbers.
+
+```sh
+bun run start -- --port 3100
+READER_URL=http://localhost:3100 bun run test:reader
+READER_URL=http://localhost:3100 bun run test:reader:interactions
+READER_URL=http://localhost:3100 BENCH_OUTPUT=/tmp/reader.json bun run benchmark:reader
+```
+
+## Deploying
+
+This is a single-server app. It needs Node, a persistent writable disk for `data/`
+and one long-lived process. Serverless platforms that freeze or discard the working
+directory will lose uploads, so run it on a small VM, a home server or any host that
+keeps a disk. Put it behind a reverse proxy with authentication if more than one
+person can reach it.
