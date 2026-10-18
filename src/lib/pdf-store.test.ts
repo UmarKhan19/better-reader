@@ -1,16 +1,17 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-// pdf-store resolves its data directory from the working directory at import
-// time, so the whole file runs inside a disposable directory. Route handlers are
-// exercised here too: they share this module instance, so they must not have a
-// second importer in another test file.
-const origin = process.cwd();
+// The store reads BETTER_KINDLE_DATA_DIR lazily, so this file owns a disposable
+// data directory without changing the process working directory. Route handlers
+// are exercised here too: they share this module instance, so they must not have
+// a second importer in another test file.
 const dir = await mkdtemp(path.join(tmpdir(), "better-kindle-store-"));
-process.chdir(dir);
+process.env.BETTER_KINDLE_DATA_DIR = path.join(dir, "data");
+assert.notEqual(path.resolve(process.env.BETTER_KINDLE_DATA_DIR), path.resolve(process.cwd(), "data"),
+  "tests must never point at the real library");
 const store = await import("./pdf-store");
 const routes = {
   library: await import("../app/api/pdfs/route"),
@@ -20,7 +21,7 @@ const routes = {
 
 after(async () => {
   await chmod(path.join(dir, "data"), 0o755).catch(() => {});
-  process.chdir(origin);
+  delete process.env.BETTER_KINDLE_DATA_DIR;
   await rm(dir, { recursive: true, force: true });
 });
 
@@ -127,7 +128,8 @@ test("deleting a book whose bytes are already gone strands neither cover nor tra
   assert.equal(await store.deletePdf(item.id), true);
   assert.deepEqual(JSON.parse(await readFile(path.join(dir, "data/trash.json"), "utf8")), []);
   assert.deepEqual(await readdir(path.join(dir, "data/trash/covers")), [], "no cover may be moved without a trash record");
-  assert.ok((await readdir(path.join(dir, "data/covers"))).includes(withCover.item.coverFileName!), "the cover stays where the index left it");
+  assert.ok(!(await readdir(path.join(dir, "data/covers"))).includes(withCover.item.coverFileName!), "the cover file is removed with the book");
+  assert.equal(await store.resolveCoverFilePath(item.id), null);
 });
 
 test("replacing a cover changes the URL so an open page cannot show the old image", async () => {
@@ -139,6 +141,72 @@ test("replacing a cover changes the URL so an open page cannot show the old imag
   assert.notEqual(first.item.coverUrl, second.item.coverUrl);
   assert.equal(second.item.coverUrl, `/api/pdfs/${item.id}/cover?v=${encodeURIComponent(second.item.coverVersion ?? "")}`);
   assert.equal((await store.listPdfs()).find((entry) => entry.id === item.id)?.coverUrl, second.item.coverUrl);
+});
+
+test("cover metadata is canonical only", async () => {
+  const item = await store.savePdf(...pdfUpload(undefined, "canonical.pdf"));
+  const covered = await store.saveCover(item.id, new File([PNG], "c.png", { type: "image/png" }));
+  assert.ok(covered.ok);
+  if (!covered.ok) return;
+  const found = await store.findPdf(item.id) as Record<string, unknown> | null;
+  assert.ok(found);
+  assert.equal(found?.hasCover, true);
+  assert.ok(typeof found?.coverUrl === "string");
+  assert.ok(typeof found?.coverFileName === "string");
+  assert.ok(typeof found?.coverVersion === "string");
+  for (const key of ["cover", "coverImage", "thumbnail", "thumbnailUrl", "coverExt", "coverMimeType"]) {
+    assert.equal(found?.[key], undefined, `${key} must not be written`);
+  }
+  const listed = (await store.listPdfs()).find((entry) => entry.id === item.id) as Record<string, unknown> | undefined;
+  assert.equal(listed?.cover, undefined);
+});
+
+test("legacy cover aliases are normalized away on read and on the next write", async () => {
+  const item = await store.savePdf(...pdfUpload(undefined, "legacy.pdf"));
+  const indexFile = path.join(dir, "data", "pdfs.json");
+  const records = JSON.parse(await readFile(indexFile, "utf8")) as Record<string, unknown>[];
+  const record = records.find((entry) => entry.id === item.id)!;
+  record.cover = "/api/pdfs/legacy/cover";
+  record.coverImage = record.cover;
+  record.thumbnail = record.cover;
+  record.thumbnailUrl = record.cover;
+  record.coverExt = ".png";
+  record.coverMimeType = "image/png";
+  await writeFile(indexFile, JSON.stringify(records), "utf8");
+
+  const found = await store.findPdf(item.id) as Record<string, unknown> | null;
+  assert.ok(found);
+  for (const key of ["cover", "coverImage", "thumbnail", "thumbnailUrl", "coverExt", "coverMimeType"]) {
+    assert.equal(found?.[key], undefined, `${key} must be dropped on read`);
+  }
+
+  await store.deleteCover(item.id);
+  const written = JSON.parse(await readFile(indexFile, "utf8")) as Record<string, unknown>[];
+  const next = written.find((entry) => entry.id === item.id)!;
+  for (const key of ["cover", "coverImage", "thumbnail", "thumbnailUrl", "coverExt", "coverMimeType"]) {
+    assert.equal(next[key], undefined, `${key} must be dropped on write`);
+  }
+});
+
+test("an oversized cover is rejected as too-large", async () => {
+  const item = await store.savePdf(...pdfUpload(undefined, "big-cover.pdf"));
+  const big = new File([Buffer.concat([PNG, Buffer.alloc(10 * 1024 * 1024 + 1)])], "big.png", { type: "image/png" });
+  assert.deepEqual(await store.saveCover(item.id, big), { ok: false, reason: "too-large" });
+});
+
+test("restore removes stashed copies when the upload already exists", async () => {
+  const item = await store.savePdf(...pdfUpload("orig", "restore-existing.pdf"));
+  const covered = await store.saveCover(item.id, new File([PNG], "c.png", { type: "image/png" }));
+  assert.ok(covered.ok);
+  if (!covered.ok) return;
+  assert.equal(await store.deletePdf(item.id), true);
+  const stashed = path.join(dir, "data", "trash", "pdfs", `${item.id}.pdf`);
+  await stat(stashed);
+  await writeFile(store.pdfFilePath(item.id), "existing");
+  const restored = await store.restorePdf(item.id);
+  assert.ok(restored);
+  await assert.rejects(stat(stashed), "the stashed copy must be removed");
+  assert.equal(await readFile(store.pdfFilePath(item.id), "utf8"), "existing");
 });
 
 // Route handlers: the same store instance, driven the way Next calls them.
@@ -225,4 +293,18 @@ test("the cover route stores an image and answers conditional requests", async (
 
   assert.equal((await routes.cover.DELETE(req(`${api}/${item.id}/cover`, { method: "DELETE" }), context(item.id))).status, 200);
   assert.equal((await routes.cover.GET(req(`${api}/${item.id}/cover`), context(item.id))).status, 404);
+});
+
+test("the cover route accepts only the cover field and reports an oversized image", async () => {
+  const [item] = (await library()).items;
+  const otherField = new FormData();
+  otherField.append("file", new File([PNG], "cover.png", { type: "image/png" }));
+  const rejected = await routes.cover.POST(req(`${api}/${item.id}/cover`, { method: "POST", body: otherField }), context(item.id));
+  assert.equal(rejected.status, 400, "an undocumented field name must not be stored");
+
+  const tooLarge = new File([Buffer.concat([PNG, Buffer.alloc(10 * 1024 * 1024 + 1)])], "big.png", { type: "image/png" });
+  const oversized = await routes.cover.POST(req(`${api}/${item.id}/cover`, {
+    method: "POST", body: tooLarge, headers: { "content-type": "image/png" },
+  }), context(item.id));
+  assert.equal(oversized.status, 413);
 });

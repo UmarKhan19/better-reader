@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { stat } from "node:fs/promises";
-import { createReadStream } from "node:fs";
-import { Readable } from "node:stream";
 import { forbiddenHost } from "@/lib/host-guard";
-import { isValidPdfId, resolveCoverFilePath, saveCover, deleteCover } from "@/lib/pdf-store";
-import { isNotModified } from "@/lib/pdf-http";
+import { COVER_MAX_BYTES, isValidPdfId, resolveCoverFilePath, saveCover, deleteCover } from "@/lib/pdf-store";
+import { serveFile } from "@/lib/serve-file";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -36,29 +33,15 @@ async function serveCover(request: Request, id: string) {
   if (!isValidPdfId(id)) return new Response("Not found", { status: 404 });
   const filePath = await resolveCoverFilePath(id);
   if (!filePath) return new Response("Not found", { status: 404 });
-  let file;
-  try {
-    file = await stat(filePath);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Response("Not found", { status: 404 });
-    throw error;
-  }
-  const etag = `"${baseFileName(filePath)}-${file.size.toString(16)}-${file.mtimeMs.toString(16)}"`;
-  const headers: Record<string, string> = {
-    "Content-Type": mimeForPath(filePath),
-    "Cache-Control": "private, max-age=3600, must-revalidate",
-    "ETag": etag,
-    "Last-Modified": file.mtime.toUTCString(),
-    "X-Content-Type-Options": "nosniff",
-  };
-  if (isNotModified(request.headers, etag, file.mtimeMs)) {
-    return new Response(null, { status: 304, headers });
-  }
-  headers["Content-Length"] = String(file.size);
-  if (request.method === "HEAD") return new Response(null, { status: 200, headers });
-  const stream = createReadStream(filePath);
-  request.signal.addEventListener("abort", () => stream.destroy());
-  return new Response(Readable.toWeb(stream) as ReadableStream, { status: 200, headers });
+  return serveFile(request, {
+    filePath,
+    contentType: mimeForPath(filePath),
+    headers: {
+      "Cache-Control": "private, max-age=3600, must-revalidate",
+      "X-Content-Type-Options": "nosniff",
+    },
+    etag: ({ size, mtimeMs }) => `"${baseFileName(filePath)}-${size.toString(16)}-${mtimeMs.toString(16)}"`,
+  });
 }
 
 export async function GET(request: Request, context: Context) {
@@ -75,22 +58,18 @@ export async function POST(request: Request, context: Context) {
   const id = (await context.params).id;
   try {
     const contentType = request.headers.get("content-type") || "";
-    let file: File | null = null;
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await request.formData();
-      const candidates = [
-        formData.get("cover"),
-        formData.get("file"),
-        formData.get("image"),
-        formData.get("thumbnail"),
-        formData.get("coverImage"),
-        formData.get("data"),
-      ].filter((value): value is File => value instanceof File);
-      if (candidates.length === 0) {
-        const all = formData.getAll("files").filter((value): value is File => value instanceof File);
-        if (all.length) candidates.push(...all);
+    const isMultipart = contentType.includes("multipart/form-data");
+    if (!isMultipart) {
+      const declared = Number(request.headers.get("content-length") ?? "");
+      if (Number.isFinite(declared) && declared > COVER_MAX_BYTES) {
+        return NextResponse.json({ error: "Cover image is too large. Use an image under 10 MB." }, { status: 413 });
       }
-      file = candidates[0] ?? null;
+    }
+    let file: File | null = null;
+    if (isMultipart) {
+      const formData = await request.formData();
+      const candidate = formData.get("cover");
+      file = candidate instanceof File ? candidate : null;
     } else {
       const buffer = await request.arrayBuffer();
       if (buffer.byteLength > 0) {
@@ -102,13 +81,18 @@ export async function POST(request: Request, context: Context) {
     }
     const result = await saveCover(id, file);
     if (!result.ok) {
-      return result.reason === "unsupported"
-        ? NextResponse.json({ error: "Unsupported cover image. Use PNG, JPEG, WebP, GIF, AVIF or BMP." }, { status: 400 })
-        : NextResponse.json({ error: "Not found" }, { status: 404 });
+      if (result.reason === "unsupported") {
+        return NextResponse.json({ error: "Unsupported cover image. Use PNG, JPEG, WebP, GIF, AVIF or BMP." }, { status: 400 });
+      }
+      if (result.reason === "too-large") {
+        return NextResponse.json({ error: "Cover image is too large. Use an image under 10 MB." }, { status: 413 });
+      }
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     return NextResponse.json({ item: result.item }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message || "Cover upload failed" }, { status: 500 });
+    console.error("Cover upload failed", error);
+    return NextResponse.json({ error: "Cover upload failed" }, { status: 500 });
   }
 }
 

@@ -4,15 +4,10 @@ export type PdfItem = {
   size: number;
   mimeType: string;
   createdAt: string;
-  // Optional cover image metadata. `coverUrl` is the stable URL served by
-  // /api/pdfs/[id]/cover; the boolean aliases make presence checks easy.
+  // Canonical cover metadata. `coverUrl` is the stable URL served by
+  // /api/pdfs/[id]/cover; `coverFileName` and `coverVersion` are server details.
   hasCover?: boolean;
-  cover?: string;
-  coverImage?: string;
   coverUrl?: string;
   coverFileName?: string;
   coverVersion?: string;
-  coverExt?: string;
-  thumbnail?: string;
-  thumbnailUrl?: string;
 };
