@@ -16,19 +16,21 @@ afterEach(() => {
 });
 
 class UploadRequest {
-  static latest: UploadRequest;
+  static all: UploadRequest[] = [];
   method = "";
   url = "";
-  body: FormData | undefined;
+  headers: Record<string, string> = {};
+  body: File | undefined;
   status = 0;
   responseText = "";
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
   upload: { onprogress: ((event: { lengthComputable: boolean; loaded: number; total: number }) => void) | null } = { onprogress: null };
 
-  constructor() { UploadRequest.latest = this; }
+  constructor() { UploadRequest.all.push(this); }
   open(method: string, url: string) { this.method = method; this.url = url; }
-  send(body: FormData) { this.body = body; }
+  setRequestHeader(name: string, value: string) { this.headers[name] = value; }
+  send(body: File) { this.body = body; }
   respond(status: number, body: string) {
     this.status = status;
     this.responseText = body;
@@ -37,6 +39,7 @@ class UploadRequest {
 }
 
 function mockUpload() {
+  UploadRequest.all = [];
   Object.defineProperty(globalThis, "XMLHttpRequest", { configurable: true, writable: true, value: UploadRequest });
 }
 
@@ -58,54 +61,71 @@ test("listing rejects failed HTTP responses and malformed JSON", async () => {
   await assert.rejects(listPdfs());
 });
 
-test("uploads send every file and report only computable progress", async () => {
+test("uploads send one raw-body request per file with the name header and aggregate progress", async () => {
   mockUpload();
-  const files = [new File(["a"], "a.pdf"), new File(["b"], "b.pdf")];
+  const files = [new File(["aaaa"], "a.pdf", { type: "application/pdf" }), new File(["bb"], "b.pdf", { type: "application/pdf" })];
   const progress: number[] = [];
   const promise = uploadPdfs(files, (percent) => progress.push(percent));
-  const request = UploadRequest.latest;
-  assert.equal(request.method, "POST");
-  assert.equal(request.url, "/api/pdfs");
-  assert.deepEqual(request.body?.getAll("files").map((file) => (file as File).name), ["a.pdf", "b.pdf"]);
-  request.upload.onprogress?.({ lengthComputable: false, loaded: 0, total: 0 });
-  request.upload.onprogress?.({ lengthComputable: true, loaded: 2, total: 3 });
-  request.respond(201, JSON.stringify({ items: [item], skipped: [] }));
-  assert.deepEqual(await promise, { items: [item], skipped: [] });
-  assert.deepEqual(progress, [67]);
+  await Promise.resolve();
+
+  assert.equal(UploadRequest.all.length, 1, "files upload one at a time");
+  const first = UploadRequest.all[0];
+  assert.equal(first.method, "POST");
+  assert.equal(first.url, "/api/pdfs");
+  assert.equal(first.headers["x-file-name"], "a.pdf");
+  assert.equal(first.body, files[0], "the File is the raw request body");
+  first.upload.onprogress?.({ lengthComputable: false, loaded: 0, total: 0 });
+  first.upload.onprogress?.({ lengthComputable: true, loaded: 3, total: 4 });
+  first.respond(201, JSON.stringify({ items: [item] }));
+  await Promise.resolve();
+
+  const second = UploadRequest.all[1];
+  assert.equal(second.headers["x-file-name"], "b.pdf");
+  second.upload.onprogress?.({ lengthComputable: true, loaded: 2, total: 2 });
+  second.respond(201, JSON.stringify({ items: [{ ...item, name: "b.pdf" }] }));
+  assert.deepEqual(await promise, { items: [item, { ...item, name: "b.pdf" }], skipped: [] });
+  assert.deepEqual(progress, [50, 100], "progress covers the whole batch");
 });
 
-test("partial and rejected batches retain their per-file outcomes", async () => {
+test("a file the server rejects becomes a per-file reason, not a failed batch", async () => {
   mockUpload();
-  const skipped = [{ name: "notes.txt", reason: "not a PDF" }];
-  for (const [status, body] of [
-    [201, { items: [item], skipped }],
-    [400, { items: [], skipped, error: "No files were uploaded" }],
-    [500, { items: [item], skipped: [] }],
-  ] as const) {
-    const promise = uploadPdfs([], () => {});
-    UploadRequest.latest.respond(status, JSON.stringify(body));
-    assert.deepEqual(await promise, { items: body.items, skipped: body.skipped });
-  }
+  const files = [new File(["x"], "notes.txt", { type: "text/plain" }), new File(["y"], "b.pdf", { type: "application/pdf" })];
+  const promise = uploadPdfs(files, () => {});
+  await Promise.resolve();
+  assert.equal(UploadRequest.all.length, 1, "a non-PDF never reaches the server");
+  UploadRequest.all[0].respond(400, JSON.stringify({ error: "the upload was rejected" }));
+  const result = await promise;
+  assert.deepEqual(result.items, []);
+  assert.deepEqual(result.skipped, [
+    { name: "notes.txt", reason: "not a PDF" },
+    { name: "b.pdf", reason: "the upload was rejected" },
+  ]);
 });
 
-test("failed uploads without useful outcomes reject so the caller can retry", async () => {
+test("network failures and server errors reject so the caller can retry", async () => {
   mockUpload();
-  for (const body of ["not json", "null", '{"error":"failed","items":[],"skipped":[]}']) {
-    const promise = uploadPdfs([], () => {});
-    UploadRequest.latest.respond(500, body);
-    await assert.rejects(promise, /Couldn't upload/);
-  }
-  const disconnected = uploadPdfs([], () => {});
-  UploadRequest.latest.onerror?.();
+  const promise = uploadPdfs([new File(["x"], "a.pdf")], () => {});
+  await Promise.resolve();
+  UploadRequest.all[0].respond(500, JSON.stringify({ error: "couldn't be saved (no space left on the server)" }));
+  await assert.rejects(promise, /Couldn't upload/);
+
+  mockUpload();
+  const disconnected = uploadPdfs([new File(["x"], "a.pdf")], () => {});
+  await Promise.resolve();
+  UploadRequest.all[0].onerror?.();
   await assert.rejects(disconnected, /Couldn't upload/);
 });
 
-test("malformed successful upload bodies preserve the existing empty-result behavior", async () => {
-  mockUpload();
-  for (const body of ["not json", "null", "17", "{}"]) {
-    const promise = uploadPdfs([], () => {});
-    UploadRequest.latest.respond(201, body);
-    assert.deepEqual(await promise, { items: [], skipped: [] });
+test("a success reply without an item is reported honestly instead of silently dropped", async () => {
+  for (const body of ["not json", "null", "17", "{}", JSON.stringify({ items: [] })]) {
+    mockUpload();
+    const promise = uploadPdfs([new File(["x"], "a.pdf")], () => {});
+    await Promise.resolve();
+    UploadRequest.all[0].respond(201, body);
+    assert.deepEqual(await promise, {
+      items: [],
+      skipped: [{ name: "a.pdf", reason: "saved, but the reply couldn't be read — reload the library" }],
+    });
   }
 });
 
