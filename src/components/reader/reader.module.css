@@ -80,17 +80,9 @@
 .viewer { flex: 1; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 16px; scrollbar-gutter: stable both-edges; outline-offset: -3px; }
 .viewer:focus-visible { outline: 2px solid var(--reader-accent); }
 .viewer[data-programmatic-focus]:focus-visible { outline: none; }
-.stage { position: relative; margin-inline: auto; background: #fff; box-shadow: 0 3px 18px rgb(0 0 0 / 10%); }
-.stage [class~="react-pdf__Page"] { min-height: 0; }
-.stage [class~="react-pdf__Page__canvas"] { max-width: none; }
-.pagePlaceholder { width: 100%; min-width: min(65vw, 560px); aspect-ratio: 3 / 4; background: #fff; }
-.renderStatus { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); max-width: 90%; border-radius: 6px; padding: 6px 12px; background: var(--background); color: var(--foreground); box-shadow: 0 2px 8px rgb(0 0 0 / 12%); font-size: 12px; white-space: nowrap; }
-.pageStatus { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 220px; padding: 24px; background: var(--background); font-size: 14px; text-align: center; }
 .root[data-paper="dimmed"] [data-reader-stage] canvas { filter: brightness(0.78); }
 .root[data-paper="sepia"] [data-reader-stage] canvas { filter: sepia(0.24) brightness(0.97); }
 .root[data-paper="dark"] [data-reader-stage] { background: #000; }
-.root[data-paper="dark"] .page { background: #000; }
-.root[data-paper="dark"] .pagePlaceholder { background: #000; }
 
 .pageControls { display: flex; align-items: center; justify-content: center; gap: 0; flex-shrink: 0; padding-inline: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--reader-panel); }
 .pageJump { display: flex; align-items: center; gap: 4px; }
