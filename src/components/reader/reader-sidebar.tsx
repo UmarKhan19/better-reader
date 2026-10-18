@@ -6,71 +6,13 @@ import { Tabs } from "@base-ui/react/tabs";
 import { Bookmark, Grid2X2, List, Search, Trash2 } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Button } from "@/components/ui/button";
-import { THUMBNAIL_ROW_HEIGHT, thumbnailWindow, activeChapter } from "./reader-state";
+import { THUMBNAIL_ROW_HEIGHT, thumbnailWindow, activeChapter, type PdfPageColors } from "./reader-state";
+import type { OutlineEntry } from "./reader-outline";
 import styles from "./reader.module.css";
 
-export type SidebarTab = "contents" | "pages" | "bookmarks" | "search";
-export type OutlineEntry = { id: string; title: string; depth: number; page: number | null; url?: string };
-type OutlineNode = {
-  title: string;
-  dest?: string | unknown[] | null;
-  url?: string | null;
-  items?: OutlineNode[];
-};
+export * from "./reader-outline";
 
-export function useReaderOutline(pdf: PDFDocumentProxy | null, enabled = true) {
-  const [resolved, setResolved] = useState<{ pdf: PDFDocumentProxy; outline: OutlineEntry[] } | null>(null);
-  useEffect(() => {
-    if (!pdf || !enabled) return;
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      try {
-        const nodes: { node: OutlineNode; depth: number }[] = [];
-        const roots = (await pdf.getOutline()) ?? [];
-        if (cancelled) return;
-        const stack = roots.map((node) => ({ node, depth: 0 })).reverse();
-        while (stack.length && !cancelled) {
-          const entry = stack.pop()!;
-          nodes.push(entry);
-          for (let i = (entry.node.items?.length ?? 0) - 1; i >= 0; i--) {
-            stack.push({ node: entry.node.items![i], depth: entry.depth + 1 });
-          }
-          if (nodes.length % 128 === 0) await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
-        }
-        const entries: OutlineEntry[] = [];
-        for (let start = 0; start < nodes.length && !cancelled; start += 8) {
-          entries.push(...await Promise.all(nodes.slice(start, start + 8).map(async ({ node, depth }, i) => {
-            let page: number | null = null;
-            try {
-              if (cancelled) return { id: String(start + i), title: node.title, depth, page };
-              const destination = typeof node.dest === "string"
-                ? await pdf.getDestination(node.dest) : node.dest;
-              if (cancelled) return { id: String(start + i), title: node.title, depth, page };
-              const ref = destination?.[0];
-              if (typeof ref === "number") page = ref + 1;
-              else if (ref && typeof ref === "object" && "num" in ref && "gen" in ref &&
-                typeof ref.num === "number" && typeof ref.gen === "number") {
-                page = await pdf.getPageIndex({ num: ref.num, gen: ref.gen }) + 1;
-              }
-            } catch {
-              // Broken destinations should not prevent the remaining contents from loading.
-            }
-            return {
-              id: String(start + i), title: node.title, depth, page,
-              url: node.url && /^https?:\/\//i.test(node.url) ? node.url : undefined,
-            };
-          })));
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
-        }
-        if (!cancelled) setResolved({ pdf, outline: entries });
-      } catch {
-        if (!cancelled) setResolved({ pdf, outline: [] });
-      }
-    }, 350);
-    return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [pdf, enabled]);
-  return resolved?.pdf === pdf && enabled ? resolved.outline : null;
-}
+export type SidebarTab = "contents" | "pages" | "bookmarks" | "search";
 
 const Thumbnail = memo(function Thumbnail({
   pdf, page, current, onNavigate, onKeyDown, pageColors,
@@ -80,7 +22,7 @@ const Thumbnail = memo(function Thumbnail({
   current: boolean;
   onNavigate: (page: number) => void;
   onKeyDown: (event: React.KeyboardEvent, page: number) => void;
-  pageColors?: { background: string; foreground: string } | null;
+  pageColors?: PdfPageColors;
 }) {
   return (
     <button type="button" className={styles.thumbnail} data-thumb-page={page}
@@ -100,7 +42,7 @@ const Thumbnail = memo(function Thumbnail({
 
 function ThumbnailList({ pdf, total, current, onNavigate, pageColors }: {
   pdf: PDFDocumentProxy; total: number; current: number; onNavigate: (page: number) => void;
-  pageColors?: { background: string; foreground: string } | null;
+  pageColors?: PdfPageColors;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ top: 0, height: 480 });
@@ -186,7 +128,7 @@ export function ReaderSidebar({
   bookmarks: number[];
   onNavigate: (page: number) => void;
   onToggleBookmark: (page: number) => void;
-  pageColors?: { background: string; foreground: string } | null;
+  pageColors?: PdfPageColors;
 }) {
   const contentsRef = useRef<HTMLOListElement>(null);
   const active = activeChapter(outline, current);
