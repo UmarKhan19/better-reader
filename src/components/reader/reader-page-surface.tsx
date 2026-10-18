@@ -147,7 +147,9 @@ export const ReaderPageSurface = memo(function ReaderPageSurface({ pdf, box, rat
   const rasterScale = (frames.shown?.width ?? box.fullWidth) / box.fullWidth;
   const fullSize = { width: box.fullWidth * rasterScale, height: box.fullHeight * rasterScale };
   const rasterVisible = { x: visible.x * rasterScale, y: visible.y * rasterScale, width: visible.width * rasterScale, height: visible.height * rasterScale };
-  const tiles = !busy && priority === 0 ? visibleTiles(fullSize, rasterVisible, typeof window === "undefined" ? 1 : window.devicePixelRatio, ratio, tileLimit) : [];
+  // Tiles follow the shown frame: computed from its raster and keyed by its identity,
+  // so they survive a pending target change instead of dropping to the blurry base.
+  const tiles = frames.shown && priority === 0 ? visibleTiles(fullSize, rasterVisible, typeof window === "undefined" ? 1 : window.devicePixelRatio, ratio, tileLimit) : [];
   const entries = !sizeKnown ? [] : presentation === "retained" ? (frames.shown ? [frames.shown] : []) :
     frames.shown && frames.shown.key !== frames.target.key ? [frames.shown, frames.target] : [frames.target];
   return <div className={styles.page} data-cached-page={box.page} aria-hidden={presentation !== "visible" || undefined} inert={presentation !== "visible"}
@@ -175,7 +177,7 @@ export const ReaderPageSurface = memo(function ReaderPageSurface({ pdf, box, rat
             onLoadSuccess={loaded}
             onRenderError={() => { if (alive.current) setFailed(frame.key); }}
             onLoadError={() => { if (alive.current) setFailed(frame.key); }} loading="" error="" suspense={false}>
-            {shown && tiles.map((tile) => <Tile key={`${target.key}:${tile.key}`} pdf={pdf} pageNumber={box.page} fullWidth={frame.width} tile={tile} pageColors={pageColors ?? undefined} />)}
+            {shown && tiles.map((tile) => <Tile key={`${frame.key}:${tile.key}`} pdf={pdf} pageNumber={box.page} fullWidth={frame.width} tile={tile} pageColors={pageColors ?? undefined} />)}
           </BudgetedRaster>
         </div>;
       })}
