@@ -21,6 +21,36 @@ Visible base rasters share 6 MP; old and incoming base rasters together stay wit
 
 Historical measurements live in [the loading comparison report](reports/reader-loading-comparison.md). Allocation limits are current contracts; past observations are not release budgets or leak tests.
 
+## Viewport data flow
+
+```text
+scroll / gesture (rAF)
+  -> useReaderScrollPlacement -> view {top, left, width, height, direction}
+       observed ReadingLocation -> session progress; never a new navigation
+  -> readerGeometry -> PageBox[] (estimates until sizes/crops arrive; never PDF bytes)
+  -> useReaderWindow -> pageWindow numbers (continuous: visible pages + one neighbour)
+       planReaderWindow -> intersection area, priority 0 visible / 1 prefetch, tile limits
+       allocateRasterWindow -> visible-area-weighted pixels and raster ratio per page
+  -> ReaderPageSurface -> BudgetedRaster -> ReaderRasterBudget.reserve
+       grant -> ScheduledPdfPage -> ReaderRenderQueue (tab singleton, two permits)
+       ready -> promote (shown pixels stay inside SHOWN_PIXEL_BUDGET) -> finishRaster
+  -> shown frame -> tiles keyed by the shown frame + canvasCrop sampling -> crops
+  -> statuses {identity, busy, readable, ready} -> busy / readable / settled
+  -> reader:first-page mark on the first readable page; reader:page-turn measure
+       once settled after a matching reader:page-request
+```
+
+An observed scroll updates only the session location; it never bumps `navigation.revision`. Placement repositions the scroller only when the revision changes or geometry does (zoom, layout), and a scroll event that lands on the placed offset is treated as its own echo, so scrolling cannot feed back into navigation. Prefetch and retained pages are presentation-only: they are inert, `aria-hidden` and never become the observed location.
+
+| State | Owner | Lifetime |
+| --- | --- | --- |
+| `sizes` | `viewport/reader-viewport.tsx` (`onSize`) | Per mounted viewport; grows until page sizes are discovered, reset only when the PDF or viewport remounts |
+| `crops` | `viewport/reader-viewport.tsx` (`onCrop`) | Per mounted viewport; capped at 128 entries, window pages and active kept first |
+| `statuses` | `viewport/reader-viewport.tsx` (`onStatus`) | Per mounted viewport; pruned to rendered pages plus active; an unmounted surface reports identity `unmounted`, busy |
+| `ReaderRasterBudget` | `viewport/reader-raster-budget.ts` | One per mounted viewport; granted pixels and shown frames live until the canvas effect cleanup |
+| `retained` | `viewport/use-reader-window.ts` (`lastReadablePages`) | Per mounted viewport; non-continuous layouts only, kept while the window is not yet readable |
+| `renderPlan` | `viewport/reader-render-window.ts` (`planReaderWindow`) | Recomputed per render from window, view and statuses; prefetch entries only while settled |
+
 ## Run the checks
 
 Use Node 22+, Chromium and the `agent-browser` CLI. Routine regression checks own their production server, library and browser profiles:

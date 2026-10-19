@@ -1,3 +1,9 @@
+// Scenario phases, in order:
+// 1. Library UI lists the owned baseline fixture.
+// 2. Partial upload: success retained, failed file retried through the UI, older list response ignored.
+// 3. Cover add, replacement, removal and re-add through the real file input.
+// 4. Delete dialog cancellation, pending-delete Escape guard, delete and undo with a delayed deleted list.
+// 5. Uploaded originals and baseline bytes remain unchanged after the complete workflow.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
