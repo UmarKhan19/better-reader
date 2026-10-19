@@ -1,16 +1,12 @@
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 if (process.env.NODE_ENV !== "test") throw new Error("The disposable library helper is only for tests");
-const previousDataDir = process.env.BETTER_READER_DATA_DIR;
-export const dir = await mkdtemp(path.join(tmpdir(), "better-reader-store-"));
-const dataDir = path.join(dir, "data");
+const configuredDataDir = process.env.BETTER_READER_DATA_DIR;
+if (!configuredDataDir) throw new Error("Tests must run through bun test so tests/preload.ts configures the store");
+export const dataDir: string = configuredDataDir;
 assert.notEqual(path.resolve(dataDir), path.resolve("data"));
-process.env.BETTER_READER_DATA_DIR = dataDir;
-
-// Configure the process before the first store import, regardless of which suite runs first.
 export const store = await import("../../src/lib/server/pdf-store");
 export const ai = await import("../../src/lib/server/book-index");
 const { invalidateCoverMap } = await import("../../src/lib/server/pdf-store/covers");
@@ -28,9 +24,6 @@ export async function resetLibrary() {
 
 export async function cleanupLibrary() {
   await chmod(dataDir, 0o755).catch(() => {});
-  await rm(dir, { recursive: true, force: true });
-  if (previousDataDir === undefined) delete process.env.BETTER_READER_DATA_DIR;
-  else process.env.BETTER_READER_DATA_DIR = previousDataDir;
 }
 
 let serial = 0;

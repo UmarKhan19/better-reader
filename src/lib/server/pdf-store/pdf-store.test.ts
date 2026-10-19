@@ -2,7 +2,7 @@ import { test, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ai, cleanupLibrary, dir, pdfUpload, PNG, resetLibrary, store } from "../../../../tests/helpers/library";
+import { ai, cleanupLibrary, dataDir, pdfUpload, PNG, resetLibrary, store } from "../../../../tests/helpers/library";
 
 beforeEach(resetLibrary);
 after(cleanupLibrary);
@@ -67,7 +67,7 @@ test("a failed index write leaves the previous library readable and no orphan up
   if (typeof process.getuid === "function" && process.getuid() === 0) return; // permission checks need a normal user
   await store.savePdf(...pdfUpload(undefined, "kept-before-failure.pdf"));
   const before = await store.listPdfs();
-  const data = path.join(dir, "data");
+  const data = dataDir;
   const uploadsBefore = (await readdir(path.join(data, "uploads"))).sort();
   await chmod(data, 0o555);
   try {
@@ -86,7 +86,7 @@ test("a cover file that vanished is cleared from the index instead of 404ing for
   const result = await store.saveCover(item.id, new File([PNG], "gone.png", { type: "image/png" }));
   assert.ok(result.ok);
   if (!result.ok) return;
-  await rm(path.join(dir, "data/covers", result.item.coverFileName!), { force: true });
+  await rm(path.join(dataDir, "covers", result.item.coverFileName!), { force: true });
   const listed = (await store.listPdfs()).find((entry) => entry.id === item.id);
   assert.equal(listed?.hasCover, false);
   assert.equal(listed?.coverUrl, undefined);
@@ -100,9 +100,9 @@ test("deleting a book whose bytes are already gone strands neither cover nor tra
   if (!withCover.ok) return;
   await rm(store.pdfFilePath(item.id), { force: true });
   assert.equal(await store.deletePdf(item.id), true);
-  assert.deepEqual(JSON.parse(await readFile(path.join(dir, "data/trash.json"), "utf8")), []);
-  assert.deepEqual(await readdir(path.join(dir, "data/trash/covers")), [], "no cover may be moved without a trash record");
-  assert.ok(!(await readdir(path.join(dir, "data/covers"))).includes(withCover.item.coverFileName!), "the cover file is removed with the book");
+  assert.deepEqual(JSON.parse(await readFile(path.join(dataDir, "trash.json"), "utf8")), []);
+  assert.deepEqual(await readdir(path.join(dataDir, "trash/covers")), [], "no cover may be moved without a trash record");
+  assert.ok(!(await readdir(path.join(dataDir, "covers"))).includes(withCover.item.coverFileName!), "the cover file is removed with the book");
   assert.equal(await store.resolveCoverFilePath(item.id), null);
 });
 
@@ -146,15 +146,15 @@ test("existing disk records preserve their JSON and cover fields through list, t
     coverFileName: `${item.id}.png`,
     coverVersion: version,
   };
-  const indexFile = path.join(dir, "data", "pdfs.json");
+  const indexFile = path.join(dataDir, "pdfs.json");
   const indexJson = JSON.stringify([record], null, 2);
   await writeFile(indexFile, indexJson);
-  await writeFile(path.join(dir, "data", "covers", record.coverFileName), PNG);
+  await writeFile(path.join(dataDir, "covers", record.coverFileName), PNG);
 
   assert.deepEqual(await store.findPdf(item.id), record);
   assert.deepEqual(await store.listPdfs(), [record]);
   assert.equal(await store.deletePdf(item.id), true);
-  const trash = JSON.parse(await readFile(path.join(dir, "data", "trash.json"), "utf8")) as { item: unknown; deletedAt: string }[];
+  const trash = JSON.parse(await readFile(path.join(dataDir, "trash.json"), "utf8")) as { item: unknown; deletedAt: string }[];
   assert.equal(trash.length, 1);
   assert.deepEqual(Object.keys(trash[0]), ["item", "deletedAt"]);
   assert.deepEqual(trash[0].item, record);
@@ -169,7 +169,7 @@ test("existing disk records preserve their JSON and cover fields through list, t
 
 test("legacy cover aliases are normalized away on read and on the next write", async () => {
   const item = await store.savePdf(...pdfUpload(undefined, "legacy.pdf"));
-  const indexFile = path.join(dir, "data", "pdfs.json");
+  const indexFile = path.join(dataDir, "pdfs.json");
   const records = JSON.parse(await readFile(indexFile, "utf8")) as Record<string, unknown>[];
   const record = records.find((entry) => entry.id === item.id)!;
   record.cover = "/api/pdfs/legacy/cover";
@@ -206,7 +206,7 @@ test("restore removes stashed copies when the upload already exists", async () =
   assert.ok(covered.ok);
   if (!covered.ok) return;
   assert.equal(await store.deletePdf(item.id), true);
-  const stashed = path.join(dir, "data", "trash", "pdfs", `${item.id}.pdf`);
+  const stashed = path.join(dataDir, "trash", "pdfs", `${item.id}.pdf`);
   await stat(stashed);
   await writeFile(store.pdfFilePath(item.id), "existing");
   const restored = await store.restorePdf(item.id);
@@ -216,7 +216,7 @@ test("restore removes stashed copies when the upload already exists", async () =
 });
 
 async function aiIndex(id: string, content = "saved embeddings") {
-  const file = path.join(dir, "data", "ai", id, "index.json");
+  const file = path.join(dataDir, "ai", id, "index.json");
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, content);
   return file;
@@ -226,9 +226,9 @@ test("index coordinates are canonical and missing originals cannot publish deriv
   const item = await store.savePdf(...pdfUpload());
   const files = store.bookIndexPaths(item.id);
   assert.equal(files.pdfFile, store.pdfFilePath(item.id));
-  assert.equal(files.indexFile, path.join(dir, "data", "ai", item.id, "index.json"));
+  assert.equal(files.indexFile, path.join(dataDir, "ai", item.id, "index.json"));
   assert.equal(files.tempFile, `${files.indexFile}.tmp`);
-  assert.equal(files.cacheDir, path.join(dir, "data", "ai", "models"));
+  assert.equal(files.cacheDir, path.join(dataDir, "ai", "models"));
   assert.equal(await store.livePdfPath(item.id), files.pdfFile);
   assert.throws(() => store.bookIndexPaths("../uploads"), /Invalid book ID/);
   assert.equal(await store.livePdfPath("../uploads"), null);
@@ -270,7 +270,7 @@ test("expired trash purges its AI index but not another book or the model cache"
   const keptFile = await aiIndex(kept.id);
   const modelFile = await aiIndex("models", "cached model");
   await store.deletePdf(expired.id);
-  const trashFile = path.join(dir, "data", "trash.json");
+  const trashFile = path.join(dataDir, "trash.json");
   const records = JSON.parse(await readFile(trashFile, "utf8")) as { item: { id: string }; deletedAt: string }[];
   records.find((entry) => entry.item.id === expired.id)!.deletedAt = "2000-01-01T00:00:00.000Z";
   await writeFile(trashFile, JSON.stringify(records));
