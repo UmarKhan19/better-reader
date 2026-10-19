@@ -43,3 +43,21 @@ Netflix, with a day/night split. Dark is the screening room: full-bleed poster h
 - One authored entrance: hero content rises in stages on load; removed under prefers-reduced-motion.
 - Card hover: 6% image zoom, 4px lift, ring and shadow, 300ms ease-out. No bounce.
 - Rows scroll smoothly; nothing animates on scroll. Reduced motion also removes card lift, cover zoom, and smooth row scrolling.
+
+## Design system ownership
+
+- `src/app/globals.css` owns shared tokens. `library-*` colors carry the library's light/dark pairs, so screens use roles such as `bg-library-background` and `text-library-muted` without rebuilding the palette at each call site. `brand` is the action red; `brand-readable` is the brighter red for small text on dark backgrounds.
+- Feedback uses `success`, `warning` and `error` foreground, surface and border tokens. Shared dialogs use the existing popover, border and muted-foreground tokens.
+- `font-display`, `leading-display`, `tracking-display`, `text-label` and `tracking-stamp` own display typography. `aspect-poster` fixes the book ratio; `scale-poster-hover` owns the cover lift's zoom. Upload progress animates a transform rather than width and respects reduced motion. Ordinary spacing stays on Tailwind's scale.
+- The five named poster palettes live in `globals.css`. `library.module.css` owns the illustration's geometry, container-relative type, hero composition and entrance timing. These one-off illustration coordinates are not application-wide spacing tokens. Reader CSS modules retain ownership of their document, panel and paper treatments.
+- `src/components/ui/button.tsx` owns shared button appearance. Use `variant`, `size` and `shape`, not padding, fixed dimensions, color or CSS-module overrides at call sites. `shape="pill"` is explicit; `size="reader-home"` owns the responsive library-return control; `variant="reader-settings"` owns the mobile/desktop settings treatment. Callers may use margins, display, self-alignment, ordering, grid placement and `w-full`. Put more complex layout on a parent.
+
+## Enforced checks
+
+`bun run lint` runs all six `@shadcn/lint` rules as errors and rejects warnings. The existing `bun run check` and CI workflow include it. `scripts/design-rules.test.mjs` checks actual allowed and rejected examples against the application config.
+
+- `no-restyle` and `require-static-classes` protect shared controls from visual overrides and opaque class expressions. Static conditionals and `cn()` remain valid. Native elements can use owner-scoped CSS modules.
+- `no-raw-colors`, `no-arbitrary-values` and `no-unknown-classes` require declared theme values, scale values and valid utilities in class-bearing application code. Define a shared token only for a shared design decision, not to give every literal a new name.
+- `no-inline-styles` keeps static presentation in classes or CSS. `eslint.config.mjs` allows only specific properties on native elements in exact runtime owners: card/hero progress widths, upload/reader progress transforms, scrubber positions, outline indentation, thumbnail virtualization, page geometry, raster transforms and tile dimensions/visibility. Shared controls cannot inherit these exceptions. Static entrance delays and poster colors have no inline exception.
+
+The plugin checks JSX and class expressions, not CSS declarations. Review CSS-module changes for token use and shared-control overrides; a clean lint run does not prove visual parity or accessibility. After UI changes, build and run the isolated browser checks in `docs/architecture.md`.

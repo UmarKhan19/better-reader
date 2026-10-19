@@ -26,6 +26,8 @@ Use the existing entry files rather than adding directory-wide barrels. The home
 
 Styles follow the same owners. `app/globals.css` holds shared tokens and base treatments; `library/library.module.css` holds library artwork and motion. `reader/reader.module.css` holds the shell and viewer; `reader/chrome/reader-chrome.module.css` holds toolbar, sidebar and dialog styles. Cross-module focus-mode selectors use the root's existing data attributes rather than another module's generated class name.
 
+`DESIGN.md` documents token and shared-control ownership. All six shadcn lint rules are errors, with exact-file/property exceptions for computed geometry in `eslint.config.mjs`. `scripts/design-rules.test.mjs` exercises the live configuration so component discovery, token recognition and exception scope cannot silently stop working.
+
 ## Upload and restore
 
 ```text

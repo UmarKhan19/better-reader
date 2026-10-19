@@ -12,6 +12,8 @@ const projectRoot = fileURLToPath(new URL("./", import.meta.url));
 const modulePath = (file) => file.replace(/\.[cm]?[jt]sx?$/, "");
 const within = (file, directory) => file === directory || file.startsWith(`${directory}/`);
 const pureModuleSet = new Set(pureModules);
+// Geometry exceptions apply to native elements, never shared control props.
+const runtimeStyles = (allow) => ["error", { allow, contracts: [{ pattern: "^[A-Z]", allow: [] }] }];
 const ownershipImports = {
   meta: {
     type: "problem",
@@ -78,9 +80,54 @@ const eslintConfig = defineConfig([
   {
     files: ["**/*.{js,jsx,ts,tsx}"],
     plugins: { shadcn },
+    settings: { shadcn: { note: "See DESIGN.md for token ownership, shared controls and runtime geometry exceptions." } },
     rules: {
-      "shadcn/no-restyle": ["error", { allow: ["layout"] }],
+      "shadcn/no-restyle": ["error", {
+        allow: ["layout"],
+        contracts: [{
+          pattern: "^Button$",
+          allow: ["w-full", "m-*", "mx-*", "my-*", "ms-*", "me-*", "mt-*", "mr-*", "mb-*", "ml-*", "display", "self-*", "order-*", "col-*", "row-*"],
+        }],
+      }],
+      "shadcn/require-static-classes": "error",
+      "shadcn/no-unknown-classes": "error",
+      "shadcn/no-raw-colors": "error",
+      "shadcn/no-arbitrary-values": "error",
+      "shadcn/no-inline-styles": "error",
     },
+  },
+  // Runtime geometry stays inline, but only these properties in their owning files.
+  {
+    files: ["src/components/library/library-{card,hero}.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["width"]) },
+  },
+  {
+    files: ["src/components/reader/pdf-reader.tsx", "src/components/library/library-grid.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["transform"]) },
+  },
+  {
+    files: ["src/components/reader/chrome/reader-scrubber.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["transform", "insetInlineStart"]) },
+  },
+  {
+    files: ["src/components/reader/chrome/reader-sidebar.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["paddingInlineStart"]) },
+  },
+  {
+    files: ["src/components/reader/chrome/reader-thumbnail-list.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["height", "top"]) },
+  },
+  {
+    files: ["src/components/reader/viewport/reader-page-surface.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["left", "top", "width", "height", "maxWidth", "maxHeight", "zIndex", "pointerEvents", "visibility", "transform"]) },
+  },
+  {
+    files: ["src/components/reader/viewport/reader-tile.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["left", "top", "width", "height", "visibility"]) },
+  },
+  {
+    files: ["src/components/reader/viewport/reader-viewport.tsx"],
+    rules: { "shadcn/no-inline-styles": runtimeStyles(["width", "height"]) },
   },
   {
     files: ["**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"],
