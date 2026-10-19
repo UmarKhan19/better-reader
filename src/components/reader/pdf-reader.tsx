@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Document, pdfjs } from "react-pdf";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -9,25 +9,22 @@ import Link from "next/link";
 import { AlertTriangle, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { displayName } from "@/lib/pdf-title";
-import { clearStorageFailures, markStorageResult } from "@/lib/storage-health";
+import { clearStorageFailures, markStorageResult, storageBlockedSnapshot, subscribeStorageBlocked } from "@/lib/storage-health";
 import { THEME_STORAGE_KEY, useTheme, writeTheme } from "@/components/theme";
-import { KeyboardShortcuts, ReaderDialog } from "./reader-controls";
-import { ReaderHeader, ReaderMobileFooter } from "./reader-toolbar";
-import { ReaderSettingsDialog } from "./reader-settings-dialog";
-import { useReaderKeyboard } from "./use-reader-keyboard";
-import { ReaderViewport } from "./reader-viewport";
+import { KeyboardShortcuts, ReaderDialog } from "./chrome/reader-controls";
+import { ReaderHeader, ReaderMobileFooter } from "./chrome/reader-toolbar";
+import { ReaderSettingsDialog } from "./chrome/reader-settings-dialog";
+import { useReaderKeyboard } from "./navigation/use-reader-keyboard";
+import { useReadingSession } from "./navigation/use-reading-session";
+import { ReaderViewport } from "./viewport/reader-viewport";
 import { optionsForPdfSize } from "./reader-load-options";
-import { ReaderSearchPanel, useReaderSearch } from "./reader-search";
-import { ReaderScrubber } from "./reader-scrubber";
-import { ReaderSidebar, useReaderOutline, type SidebarTab } from "./reader-sidebar";
-import {
-  activeChapter,
-  clampPage, clampZoom, createProgressWriter, initialNavigation, parseBookmarks, parsePreferences, parseReadingLocation,
-  paperPageColors, readerNavigationReducer, readingProgress, readStorage, storageBlockedSnapshot, storageKey,
-  subscribeStorageBlocked, writeStorage,
-  type ReaderPreferences, type ReadingLocation, type Size,
-} from "./reader-state";
+import { ReaderSearchPanel, useReaderSearch } from "./search/reader-search";
+import { ReaderScrubber } from "./chrome/reader-scrubber";
+import { ReaderSidebar, type SidebarTab } from "./chrome/reader-sidebar";
+import { activeChapter, useReaderOutline } from "./navigation/reader-outline";
+import { clampZoom, paperPageColors } from "./reader-preferences";
+import { readingProgress } from "@/lib/reading-progress";
+import type { Size } from "./viewport/reader-geometry";
 import styles from "./reader.module.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -49,18 +46,18 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
 }
 
 function BookReader({ id, title, fileSize }: PdfReaderProps) {
-  const displayTitle = displayName(title);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLElement>(null);
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const programmaticFocusRef = useRef(false);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
-  const [reading, dispatchNavigation] = useReducer(readerNavigationReducer, id,
-    (bookId) => initialNavigation(parseReadingLocation(readStorage(storageKey("progress", bookId)))));
+  const total = pdf?.numPages ?? null;
+  const {
+    reading, preferences, bookmarks, navigate, jump, goBack: back, observeLocation: onLocationChange,
+    restore, toggleBookmark, updatePreferences, zoomBy: changeZoom, toggleFocusMode, save,
+  } = useReadingSession(id, total);
   const pageNumber = reading.location.page;
-  const [preferences, setPreferences] = useState(() => parsePreferences(readStorage(storageKey("settings", id))));
-  const [bookmarks, setBookmarks] = useState(() => parseBookmarks(readStorage(storageKey("bookmarks", id))));
   const [available, setAvailable] = useState<Size>({ width: 0, height: 0 });
   const [effectiveScale, setEffectiveScale] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -84,32 +81,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
   const outline = useReaderOutline(pdf, firstPageReady);
   const search = useReaderSearch(pdf, query, firstPageReady && sidebarOpen && sidebarTab === "search");
   const chapter = activeChapter(outline, pageNumber);
-  const total = pdf?.numPages ?? null;
   const progress = total ? readingProgress(reading.location, total) : 0;
   const bookmarked = bookmarks.includes(pageNumber);
   const fullscreenSupported = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
   const chromeVisible = !focusMode || controlsVisible || panel !== null || sidebarOpen;
-
-  useEffect(() => {
-    writeStorage(storageKey("settings", id), preferences);
-  }, [id, preferences]);
-  const progressWriter = useMemo(() => createProgressWriter((value) => writeStorage(storageKey("progress", id), value)), [id]);
-  useEffect(() => {
-    if (total) progressWriter.update(reading.location, total);
-  }, [progressWriter, reading.location, total]);
-  useEffect(() => {
-    const flushHidden = () => { if (document.visibilityState === "hidden") progressWriter.flush(); };
-    window.addEventListener("pagehide", progressWriter.flush);
-    document.addEventListener("visibilitychange", flushHidden);
-    return () => {
-      window.removeEventListener("pagehide", progressWriter.flush);
-      document.removeEventListener("visibilitychange", flushHidden);
-      progressWriter.flush();
-    };
-  }, [progressWriter]);
-  useEffect(() => {
-    writeStorage(storageKey("bookmarks", id), bookmarks);
-  }, [id, bookmarks]);
 
   useEffect(() => {
     const node = viewerRef.current;
@@ -153,15 +128,6 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     setProgrammaticFocus(value);
   }, []);
 
-  const requestNavigation = useCallback((page: number, remember = false) => {
-    if (!total || !Number.isFinite(page)) return;
-    const next = clampPage(page, total);
-    performance.clearMarks("reader:page-request");
-    performance.mark("reader:page-request", { detail: { page: next } });
-    dispatchNavigation({ type: "jump", location: { page: next, offset: 0 }, total, remember });
-  }, [total]);
-  const navigate = useCallback((page: number) => requestNavigation(page), [requestNavigation]);
-  const jump = useCallback((page: number) => requestNavigation(page, true), [requestNavigation]);
   // react-pdf's internal-link viewer retains its initial onItemClick callback.
   const latestJump = useRef(jump);
   useLayoutEffect(() => { latestJump.current = jump; }, [jump]);
@@ -170,14 +136,9 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
   }, []);
   const goBack = useCallback(() => {
     if (!total) return;
-    performance.clearMarks("reader:page-request");
-    performance.mark("reader:page-request");
-    dispatchNavigation({ type: "back", total });
+    back();
     if (!desktop) setSidebarOpen(false);
-  }, [total, desktop]);
-  const onLocationChange = useCallback((location: ReadingLocation) => {
-    if (total) dispatchNavigation({ type: "scroll", location, total });
-  }, [total]);
+  }, [total, desktop, back]);
   const onReady = useCallback(() => setFirstPageReady(true), []);
 
   const sidebarNavigate = useCallback((page: number) => {
@@ -197,47 +158,24 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     return () => clearTimeout(timer);
   }, [sidebarOpen, sidebarTab, desktop, firstPageReady]);
 
-  const toggleBookmark = useCallback((page: number) => {
-    if (!total) return;
-    const value = clampPage(page, total);
-    setBookmarks((previous) => previous.includes(value)
-      ? previous.filter((n) => n !== value) : [...previous, value].sort((a, b) => a - b));
-  }, [total]);
-
-  const updatePreferences = useCallback((update: Partial<ReaderPreferences>) => {
-    setPreferences((previous) => ({ ...previous, ...update }));
-  }, []);
-
   const retryStorage = useCallback(() => {
     clearStorageFailures();
-    const saved = [
-      writeStorage(storageKey("settings", id), preferences),
-      writeStorage(storageKey("bookmarks", id), bookmarks),
-    ];
-    if (total) {
-      saved.push(writeStorage(storageKey("progress", id), {
-        page: reading.location.page, offset: reading.location.offset, numPages: total,
-      }));
-    }
+    const saved = save();
     // A retry writes every value that can fail; each key then clears only its own failure.
     const themeSaved = writeTheme(theme);
     markStorageResult(THEME_STORAGE_KEY, themeSaved);
-    saved.push(themeSaved);
-    if (saved.every(Boolean)) {
+    if (saved && themeSaved) {
       showFeedback("Browser storage works again. Your place and bookmarks will be saved on this device.");
     }
-  }, [id, preferences, bookmarks, total, reading.location, showFeedback, theme]);
+  }, [save, showFeedback, theme]);
 
   const onGestureZoom = useCallback((zoom: number) => {
     updatePreferences({ viewMode: "custom", zoom: clampZoom(zoom) });
   }, [updatePreferences]);
 
   const zoomBy = useCallback((delta: number) => {
-    setPreferences((previous) => ({
-      ...previous, viewMode: "custom",
-      zoom: clampZoom((previous.viewMode === "custom" ? previous.zoom : effectiveScale) + delta),
-    }));
-  }, [effectiveScale]);
+    changeZoom(delta, effectiveScale);
+  }, [changeZoom, effectiveScale]);
 
   const toggleFullscreen = useCallback(async () => {
     try {
@@ -261,7 +199,7 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
 
   const toggleFocus = useCallback(() => {
     if (focusTimer.current) clearTimeout(focusTimer.current);
-    setPreferences((previous) => ({ ...previous, focusMode: !previous.focusMode }));
+    toggleFocusMode();
     setControlsVisible(false);
     setPanel(null);
     setSidebarOpen(false);
@@ -272,7 +210,7 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     // and keep the programmatic move from painting the full-viewer focus ring.
     markViewerFocus(true);
     requestAnimationFrame(() => viewerRef.current?.focus({ preventScroll: true }));
-  }, [markViewerFocus]);
+  }, [markViewerFocus, toggleFocusMode]);
 
   useReaderKeyboard({
     navigate,
@@ -296,12 +234,15 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
   });
 
   const onDocumentLoad = useCallback((document: PDFDocumentProxy) => {
-    dispatchNavigation({ type: "restore", total: document.numPages });
+    restore(document.numPages);
     setFirstPageReady(false);
-    setBookmarks((pages) => pages.filter((page) => page <= document.numPages));
     setPdf(document);
     setLoadError(false);
-  }, []);
+  }, [restore]);
+
+  const pageControls = { page: pageNumber, total, onNavigate: navigate, onSeek: jump, onMessage: showFeedback };
+  const toggleSidebar = () => setSidebarOpen((value) => !value);
+  const toggleCurrentBookmark = () => toggleBookmark(pageNumber);
 
   const sidebar = total && pdf ? <ReaderSidebar pdf={pdf} outline={outline} total={total} current={pageNumber}
     tab={sidebarTab} onTabChange={setSidebarTab} bookmarks={bookmarks}
@@ -323,15 +264,13 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
         if ((event.target as Element).closest("[data-reader-chrome]")) revealControls();
       }}>
       <ReaderHeader
-        displayTitle={displayTitle}
         title={title}
         chapterTitle={chapter?.title ?? (total ? `${total} pages` : "PDF reader")}
-        total={total}
-        pageNumber={pageNumber}
+        pageControls={pageControls}
         sidebarOpen={sidebarOpen}
         searchExpanded={sidebarOpen && sidebarTab === "search"}
-        setSidebarOpen={setSidebarOpen}
-        pdf={pdf}
+        onToggleSidebar={toggleSidebar}
+        ready={Boolean(pdf)}
         coarsePointer={coarsePointer}
         readingHistoryLength={reading.history.length}
         goBack={goBack}
@@ -340,14 +279,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
         updatePreferences={updatePreferences}
         zoomBy={zoomBy}
         bookmarked={bookmarked}
-        toggleBookmark={toggleBookmark}
-        focusMode={focusMode}
+        onToggleBookmark={toggleCurrentBookmark}
         toggleFocus={toggleFocus}
-        panel={panel}
-        setPanel={setPanel}
-        navigate={navigate}
-        jump={jump}
-        showFeedback={showFeedback}
+        settingsOpen={panel === "settings"}
+        onOpenSettings={() => setPanel("settings")}
         chromeVisible={chromeVisible}
       />
 
@@ -406,15 +341,11 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
 
       <ReaderMobileFooter
         sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        pdf={pdf}
-        pageNumber={pageNumber}
-        total={total}
-        navigate={navigate}
-        jump={jump}
-        showFeedback={showFeedback}
+        onToggleSidebar={toggleSidebar}
+        ready={Boolean(pdf)}
+        pageControls={pageControls}
         bookmarked={bookmarked}
-        toggleBookmark={toggleBookmark}
+        onToggleBookmark={toggleCurrentBookmark}
         chromeVisible={chromeVisible}
       />
 

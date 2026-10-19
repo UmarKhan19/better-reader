@@ -6,7 +6,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { readyExpression } from "./benchmark-reader.mjs";
-import limits from "../src/components/reader/reader-limits.json" with { type: "json" };
+import limits from "../src/components/reader/viewport/reader-limits.json" with { type: "json" };
 
 const origin = process.env.READER_URL ?? "http://localhost:3000";
 const screenshots = process.env.READER_SCREENSHOTS ? path.resolve(process.env.READER_SCREENSHOTS) : undefined;

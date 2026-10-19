@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PdfItem } from "@/types/pdf";
 import * as client from "./library-client";
 import { parseLibraryProgress, type ReadingProgress } from "./library-model";
+import { progressStorageKey } from "@/lib/reading-progress";
+import { readStorage } from "@/lib/browser-storage";
 
 export function useLibraryItems() {
   const [items, setItems] = useState<PdfItem[]>([]);
@@ -14,7 +16,7 @@ export function useLibraryItems() {
     if (typeof window === "undefined") return map;
     for (const item of items) {
       try {
-        const value = parseLibraryProgress(window.localStorage.getItem(`better-reader:progress:${item.id}`));
+        const value = parseLibraryProgress(readStorage(progressStorageKey(item.id)));
         if (value) map[item.id] = value;
       } catch {
         // Storage may be blocked; the library still works without saved progress.

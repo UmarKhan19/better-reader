@@ -1,7 +1,0 @@
-{
-  "basePixelBudget": 12000000,
-  "shownPixelBudget": 6000000,
-  "pagePixelLimit": 3000000,
-  "tilePixelBudget": 6000000,
-  "maxTiles": 6
-}

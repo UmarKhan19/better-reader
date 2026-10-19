@@ -1,5 +1,6 @@
 import type { PdfItem } from "@/types/pdf";
 import { displayName } from "@/lib/pdf-title";
+import { parseSavedProgress } from "@/lib/reading-progress";
 
 export type SortMode = "recent" | "name";
 export type ReadingProgress = { page: number; numPages: number };
@@ -34,22 +35,10 @@ export function formatDate(iso: string): string {
 /** Missing progress must stay distinct from a reader's default page of 1. */
 export function parseLibraryProgress(raw: string | null): ReadingProgress | undefined {
   if (!raw) return undefined;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    parsed = Number(raw);
-  }
-  const value = parsed && typeof parsed === "object" ? parsed as { page?: unknown; numPages?: unknown } : null;
-  // Older writers stored a bare page number ("17"); the reader still accepts it,
-  // so a book must not look unread here while the reader resumes it.
-  const page = Number(typeof parsed === "number" ? parsed : value?.page);
-  if (!Number.isFinite(page) || page < 1) return undefined;
-  const numPages = Number(value?.numPages);
-  return {
-    page: Math.round(page),
-    numPages: Number.isFinite(numPages) ? numPages : 0,
-  };
+  // Keep the library's legacy non-JSON numeric fallback, including "+17".
+  const value = parseSavedProgress(raw) ?? parseSavedProgress(String(Number(raw)));
+  if (!value || !Number.isFinite(value.page) || value.page < 1) return undefined;
+  return { page: Math.round(value.page), numPages: value.numPages };
 }
 
 export function progressPercent(value?: ReadingProgress): number {

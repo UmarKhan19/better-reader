@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {launchBrowser, readConfig, readyExpression, waitFor} from './benchmark-reader.mjs';
-import limits from '../src/components/reader/reader-limits.json' with { type: 'json' };
+import limits from '../src/components/reader/viewport/reader-limits.json' with { type: 'json' };
 
 const config = readConfig({...process.env, READER_URL: process.env.READER_URL ?? 'http://localhost:3100'});
 const items = (await (await fetch(`${config.origin}/api/pdfs`)).json()).items;
