@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { forbiddenHost } from "@/lib/host-guard";
 import { listPdfs, savePdf } from "@/lib/pdf-store";
+import { queueBookIndex } from "@/lib/ai";
 
 /** The uploader sends the file bytes as the raw body; the name travels in a header. */
 function uploadName(header: string | null): string {
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
   }
   try {
     const item = await savePdf(request.body, name);
+    queueBookIndex(item.id);
     return NextResponse.json({ items: [item] }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: saveFailureReason(error) }, { status: 500 });

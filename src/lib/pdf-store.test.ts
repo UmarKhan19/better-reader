@@ -1,6 +1,6 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -13,6 +13,7 @@ process.env.BETTER_READER_DATA_DIR = path.join(dir, "data");
 assert.notEqual(path.resolve(process.env.BETTER_READER_DATA_DIR), path.resolve(process.cwd(), "data"),
   "tests must never point at the real library");
 const store = await import("./pdf-store");
+const ai = await import("./ai");
 const routes = {
   library: await import("../app/api/pdfs/route"),
   pdf: await import("../app/api/pdfs/[id]/route"),
@@ -207,6 +208,68 @@ test("restore removes stashed copies when the upload already exists", async () =
   assert.ok(restored);
   await assert.rejects(stat(stashed), "the stashed copy must be removed");
   assert.equal(await readFile(store.pdfFilePath(item.id), "utf8"), "existing");
+});
+
+async function aiIndex(id: string, content = "saved embeddings") {
+  const file = path.join(dir, "data", "ai", id, "index.json");
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, content);
+  return file;
+}
+
+test("AI indexes survive delete/undo but deleted books cannot return evidence", async () => {
+  const item = await store.savePdf(...pdfUpload(undefined, "indexed.pdf"));
+  const file = await aiIndex(item.id);
+  assert.equal(await store.deletePdf(item.id), true);
+  assert.equal(await readFile(file, "utf8"), "saved embeddings", "the undo window retains the index");
+  assert.deepEqual(await ai.searchBook(item.id, "question"), [], "trash is never searchable");
+  assert.equal((await store.restorePdf(item.id))?.id, item.id);
+  assert.equal(await readFile(file, "utf8"), "saved embeddings", "undo can reuse the same index");
+});
+
+test("an index finishing after delete cannot publish or resurrect a book", async () => {
+  const item = await store.savePdf(...pdfUpload(undefined, "index-race.pdf"));
+  const file = await aiIndex(item.id, "old index");
+  await writeFile(`${file}.tmp`, "new index");
+  assert.equal(await ai.publishBookIndex(item.id, `${file}.tmp`), true);
+  assert.equal(await readFile(file, "utf8"), "new index");
+  await store.deletePdf(item.id);
+  await writeFile(`${file}.tmp`, "late index");
+  assert.equal(await ai.publishBookIndex(item.id, `${file}.tmp`), false);
+  assert.equal(await readFile(file, "utf8"), "new index");
+  assert.equal(await store.findPdf(item.id), null);
+});
+
+test("expired trash purges its AI index but not another book or the model cache", async () => {
+  const expired = await store.savePdf(...pdfUpload(undefined, "expired.pdf"));
+  const kept = await store.savePdf(...pdfUpload(undefined, "kept-index.pdf"));
+  const expiredFile = await aiIndex(expired.id);
+  const keptFile = await aiIndex(kept.id);
+  const modelFile = await aiIndex("models", "cached model");
+  await store.deletePdf(expired.id);
+  const trashFile = path.join(dir, "data", "trash.json");
+  const records = JSON.parse(await readFile(trashFile, "utf8")) as { item: { id: string }; deletedAt: string }[];
+  records.find((entry) => entry.item.id === expired.id)!.deletedAt = "2000-01-01T00:00:00.000Z";
+  await writeFile(trashFile, JSON.stringify(records));
+  await store.deletePdf(kept.id);
+  await assert.rejects(stat(expiredFile));
+  assert.equal(await readFile(keptFile, "utf8"), "saved embeddings");
+  assert.equal(await readFile(modelFile, "utf8"), "cached model");
+});
+
+test("deleting missing PDF bytes also removes an unusable AI index", async () => {
+  const item = await store.savePdf(...pdfUpload(undefined, "missing-indexed.pdf"));
+  const file = await aiIndex(item.id);
+  await rm(store.pdfFilePath(item.id));
+  await store.deletePdf(item.id);
+  await assert.rejects(stat(file));
+});
+
+test("retrieval rejects unsafe IDs and empty or oversized questions before worker work", async () => {
+  await assert.rejects(ai.searchBook("../uploads", "question"), /Invalid book ID/);
+  const item = await store.savePdf(...pdfUpload());
+  await assert.rejects(ai.searchBook(item.id, "  "), /Question/);
+  await assert.rejects(ai.searchBook(item.id, "x".repeat(2001)), /Question/);
 });
 
 // Route handlers: the same store instance, driven the way Next calls them.

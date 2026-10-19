@@ -13,6 +13,7 @@ if (process.env.NODE_ENV === "test" && !process.env.BETTER_READER_DATA_DIR) {
 const DATA_DIR = process.env.BETTER_READER_DATA_DIR ?? path.join(process.cwd(), "data");
 export const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 export const COVERS_DIR = path.join(DATA_DIR, "covers");
+export const AI_DIR = path.join(DATA_DIR, "ai");
 export const INDEX_FILE = path.join(DATA_DIR, "pdfs.json");
 export const TRASH_DIR = path.join(DATA_DIR, "trash");
 // PDFs and cover images live in separate trash directories so one file name can
@@ -33,10 +34,11 @@ export async function ensureDirs(): Promise<void> {
   await mkdir(TRASH_COVERS_DIR, { recursive: true });
 }
 
-let mutations: Promise<unknown> = Promise.resolve();
+// Instrumentation, route bundles and dev reloads must use the same mutation lock.
+const globalStorage = globalThis as typeof globalThis & { betterReaderMutations?: Promise<unknown> };
 export function serialized<T>(change: () => Promise<T>): Promise<T> {
-  const run = mutations.then(change, change);
-  mutations = run.then(() => undefined, () => undefined);
+  const run = (globalStorage.betterReaderMutations ?? Promise.resolve()).then(change, change);
+  globalStorage.betterReaderMutations = run.then(() => undefined, () => undefined);
   return run;
 }
 

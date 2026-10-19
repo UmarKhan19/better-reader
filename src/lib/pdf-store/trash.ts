@@ -2,7 +2,7 @@ import { readdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import type { PdfItem } from "@/types/pdf";
 import * as storage from "./storage";
-import { serialized, fileExists, isValidPdfId, ensureDirs, COVERS_DIR, TRASH_COVERS_DIR, TRASH_DIR, TRASH_FILE, TRASH_PDFS_DIR, UPLOADS_DIR } from "./storage";
+import { serialized, fileExists, isValidPdfId, ensureDirs, AI_DIR, COVERS_DIR, TRASH_COVERS_DIR, TRASH_DIR, TRASH_FILE, TRASH_PDFS_DIR, UPLOADS_DIR } from "./storage";
 import { normalizeItem, readIndex, writeIndex } from "./index-store";
 import { invalidateCoverMap } from "./covers";
 
@@ -66,6 +66,7 @@ async function removeTrashedFiles(record: TrashRecord): Promise<void> {
     ] : []),
   ];
   for (const target of targets) await rm(target, { force: true });
+  if (isValidPdfId(id)) await rm(path.join(AI_DIR, id), { recursive: true, force: true });
 }
 
 async function purgeExpiredTrash(records: TrashRecord[]): Promise<TrashRecord[]> {
@@ -152,6 +153,7 @@ export async function deletePdf(id: string): Promise<boolean> {
       await rm(path.join(/* turbopackIgnore: true */ TRASH_DIR, coverName), { force: true });
     }
     await removeStashedPdfs(id);
+    await rm(path.join(AI_DIR, id), { recursive: true, force: true });
     invalidateCoverMap();
     return true;
   });
@@ -169,6 +171,7 @@ export async function restorePdf(id: string): Promise<PdfItem | null> {
       const source = await findStashedPdf(id);
       if (!source) {
         await writeTrash(records.filter((entry) => entry.item.id !== id));
+        await rm(path.join(AI_DIR, id), { recursive: true, force: true });
         return null;
       }
       await rename(source, upload);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { forbiddenHost } from "@/lib/host-guard";
 import { isValidPdfId, pdfFilePath, deletePdf, restorePdf } from "@/lib/pdf-store";
 import { serveFile } from "@/lib/serve-file";
+import { queueBookIndex } from "@/lib/ai";
 
 async function servePdf(request: Request, id: string) {
   const forbidden = forbiddenHost(request);
@@ -51,6 +52,7 @@ export async function POST(request: Request, context: Context) {
   try {
     const item = await restorePdf((await context.params).id);
     if (!item) return NextResponse.json({ error: "Nothing to restore" }, { status: 404 });
+    queueBookIndex(item.id);
     return NextResponse.json({ item });
   } catch {
     return NextResponse.json({ error: "Restore failed" }, { status: 500 });
