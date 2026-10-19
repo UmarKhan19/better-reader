@@ -9,7 +9,7 @@ import { ReaderPageSurface } from "./reader-page-surface";
 import { ReaderRasterBudget } from "./reader-raster-budget";
 import { pageIntersection } from "./reader-render-window";
 import type { ReaderHighlightText } from "./reader-text-renderer";
-import { useReaderZoom } from "./reader-use-zoom";
+import { useReaderZoom } from "./use-reader-zoom";
 import { getPdfKey, lowResourceDevice } from "./reader-viewport-runtime";
 import { boundedMeasure, markReader, READER_MARKS } from "./reader-performance";
 import { useReaderScrollPlacement } from "./use-reader-scroll-placement";

@@ -57,7 +57,7 @@ const ownershipImports = {
         messageId = "reader";
       } else if (pure && (/^(?:react(?:-dom|-pdf)?|next)(?:\/|$)/.test(source)
         || (within(target, "components") && !pureModuleSet.has(target))
-        || /(?:^|\/)(?:use-[^/]+|reader-use-zoom)$/.test(target || modulePath(source)))) {
+        || /(?:^|\/)use-[^/]+$/.test(target || modulePath(source)))) {
         messageId = "pure";
       }
       if (messageId) context.report({ node: node.source, messageId });

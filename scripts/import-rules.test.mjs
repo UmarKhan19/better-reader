@@ -209,7 +209,7 @@ test("pure leaves reject all reader UI and hooks, not just named chrome controls
     "../search/use-reader-search",
     "./use-reader-chrome",
     "./use-reader-keyboard",
-    "../viewport/reader-use-zoom",
+    "../viewport/use-reader-zoom",
     "../viewport/reader-render-queue",
     "../viewport/reader-page-surface",
     "../viewport/new-overlay",

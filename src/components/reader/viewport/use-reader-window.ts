@@ -26,6 +26,7 @@ export function useReaderWindow({
   cropMargins: boolean;
   lowResource: boolean;
 }) {
+  // Render-phase derived state, not effects: it avoids an extra paint, and the comparisons keep both updates idempotent.
   const [turn, setTurn] = useState({ page: active, direction: 1 });
   if (turn.page !== active) setTurn({ page: active, direction: active > turn.page ? 1 : -1 });
 

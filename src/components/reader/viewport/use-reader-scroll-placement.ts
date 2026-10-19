@@ -7,7 +7,7 @@ import { clampPage, type ReadingLocation } from "@/lib/reading-progress";
 import { fraction, locationAt, locationTop, type ReaderGeometry, type Size } from "./reader-geometry";
 import { anchoredScroll } from "./reader-gestures";
 import { stagePosition } from "./reader-viewport-runtime";
-import type { ZoomAnchor } from "./reader-use-zoom";
+import type { ZoomAnchor } from "./use-reader-zoom";
 
 export function useReaderScrollPlacement({
   pdf, active, available, scrollRef, stageRef, navigation, viewMode, zoom, geometry, onLocationChange,
