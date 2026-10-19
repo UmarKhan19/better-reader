@@ -37,7 +37,7 @@ export function useUpload(options: {
       setNotice(notice);
     } catch {
       setFailedFiles(list);
-      setNotice({ tone: "error", text: "Couldn't upload. Check your connection and try again." });
+      setNotice(uploadNotice(0, [], list.length));
     } finally {
       setUploading(false);
       setUploadProgress(null);

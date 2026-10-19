@@ -9,6 +9,7 @@ export type LibraryNotice = {
   text: string;
   details?: string[];
   undo?: PdfItem;
+  retryUpload?: boolean;
 };
 
 export function formatBytes(bytes: number): string {
@@ -87,7 +88,7 @@ export function uploadNotice(
 ): LibraryNotice {
   const details = skipped.map((file) => `${file.name}, ${file.reason}`);
   if (saved === 0 && failedCount > 0) {
-    return { tone: "error", text: "Couldn't upload. Check your connection and try again.", details };
+    return { tone: "error", text: "Couldn't upload. Check your connection and try again.", details, retryUpload: true };
   }
   if (saved === 0) {
     return { tone: "warning", text: "No files were uploaded.", details };
@@ -97,7 +98,8 @@ export function uploadNotice(
     const parts: string[] = [];
     if (skipped.length) parts.push(`${skipped.length} skipped`);
     if (failedCount > 0) parts.push(`${failedCount} failed`);
-    return { tone: "warning", text: `${uploaded}, ${parts.join(", ")}.`, details };
+    return { tone: "warning", text: `${uploaded}, ${parts.join(", ")}.`, details,
+      ...(failedCount > 0 ? { retryUpload: true } : {}) };
   }
   return { tone: "success", text: `${uploaded}.` };
 }

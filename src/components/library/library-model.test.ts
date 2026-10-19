@@ -101,12 +101,12 @@ test("upload notices distinguish complete, partial and entirely skipped batches"
 
 test("upload notices treat failed uploads as partial or complete failures", () => {
   assert.deepEqual(uploadNotice(1, [], 1), {
-    tone: "warning", text: "1 PDF uploaded, 1 failed.", details: [],
+    tone: "warning", text: "1 PDF uploaded, 1 failed.", details: [], retryUpload: true,
   });
   assert.deepEqual(uploadNotice(0, [], 1), {
-    tone: "error", text: "Couldn't upload. Check your connection and try again.", details: [],
+    tone: "error", text: "Couldn't upload. Check your connection and try again.", details: [], retryUpload: true,
   });
   assert.deepEqual(uploadNotice(1, [{ name: "notes.txt", reason: "not a PDF" }], 1), {
-    tone: "warning", text: "1 PDF uploaded, 1 skipped, 1 failed.", details: ["notes.txt, not a PDF"],
+    tone: "warning", text: "1 PDF uploaded, 1 skipped, 1 failed.", details: ["notes.txt, not a PDF"], retryUpload: true,
   });
 });

@@ -44,7 +44,7 @@ export function LibraryFeedback({ loadError, notice, onReload, onDismiss, onRetr
                 {notice.details.map((detail) => <li key={detail}>{detail}</li>)}
               </ul>
             )}
-            {notice.tone === "error" && onRetryUpload && (
+            {notice.retryUpload && onRetryUpload && (
               <Button variant="outline" size="touch" className="mt-3" onClick={onRetryUpload}>Try again</Button>
             )}
             {undoItem && (

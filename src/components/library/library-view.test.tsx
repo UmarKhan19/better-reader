@@ -6,6 +6,7 @@ import { LibraryCard, type LibraryCardProps } from "./library-card";
 import { LibraryFeedback } from "./library-feedback";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHero } from "./library-hero";
+import { uploadNotice } from "./library-model";
 
 const noop = () => {};
 const card: LibraryCardProps = {
@@ -79,14 +80,40 @@ test("hero still distinguishes starting, resuming and finished progress", () => 
   assert.match(finished, /100% read/);
 });
 
-test("feedback keeps load errors, upload retry and failed-restore undo available", () => {
+test("feedback keeps load errors and failed-restore undo without a stale upload action", () => {
   const html = renderToStaticMarkup(<LibraryFeedback
     loadError notice={{ tone: "error", text: "Restore failed", undo: card.item }}
     onReload={noop} onDismiss={noop} onRetryUpload={noop} onUndoDelete={noop} undoing={false}
   />);
   assert.equal([...html.matchAll(/role="alert"/g)].length, 2);
   assert.match(html, /Your PDFs are still on disk/);
-  assert.equal([...html.matchAll(/Try again/g)].length, 2);
+  assert.equal([...html.matchAll(/Try again/g)].length, 1);
   assert.match(html, /Undo delete/);
   assert.match(html, /aria-label="Dismiss message"/);
+});
+
+test("partial upload warnings offer retry for the failed remainder", () => {
+  const html = renderToStaticMarkup(<LibraryFeedback
+    loadError={false} notice={uploadNotice(1, [], 1)}
+    onReload={noop} onDismiss={noop} onRetryUpload={noop} onUndoDelete={noop} undoing={false}
+  />);
+  assert.match(html, /1 PDF uploaded, 1 failed/);
+  assert.match(html, /Try again/);
+});
+
+test("only failed upload notices expose a supplied upload retry callback", () => {
+  for (const notice of [uploadNotice(0, [], 1), uploadNotice(1, [], 1)]) {
+    const html = renderToStaticMarkup(<LibraryFeedback
+      loadError={false} notice={notice} onReload={noop} onDismiss={noop}
+      onRetryUpload={noop} onUndoDelete={noop} undoing={false}
+    />);
+    assert.match(html, /Try again/);
+  }
+  for (const notice of [uploadNotice(1, []), uploadNotice(0, [{ name: "notes.txt", reason: "not a PDF" }])]) {
+    const html = renderToStaticMarkup(<LibraryFeedback
+      loadError={false} notice={notice} onReload={noop} onDismiss={noop}
+      onRetryUpload={noop} onUndoDelete={noop} undoing={false}
+    />);
+    assert.doesNotMatch(html, /Try again/);
+  }
 });
