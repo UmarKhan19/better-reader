@@ -60,7 +60,7 @@ export function LibraryHero({ item, progress, coverFailed, onCoverError }: {
               </div>
               {progress.numPages > 0 && (
                 <div className="mt-2 h-1 overflow-hidden rounded-full bg-neutral-900/15 dark:bg-white/15">
-                  <div className="h-full rounded-full bg-[#e50914]" style={{ width: `${progressPercent(progress)}%` }} />
+                  <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercent(progress)}%` }} />
                 </div>
               )}
             </div>

@@ -39,7 +39,7 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
       )}
     >
       <div className="flex min-h-[4.5rem] items-center justify-between gap-2 px-4 py-3 md:px-12 lg:px-16">
-        <span className={`${DISPLAY} whitespace-nowrap text-lg tracking-wider text-[#e50914] min-[360px]:text-xl sm:text-2xl md:text-3xl dark:text-[#ff3440] sm:dark:text-[#e50914]`}>Better Reader</span>
+        <span className={`${DISPLAY} whitespace-nowrap text-lg tracking-wider text-brand min-[360px]:text-xl sm:text-2xl md:text-3xl dark:text-[#ff3440] sm:dark:text-brand`}>Better Reader</span>
         <div className="flex items-center gap-1 sm:gap-3">
           <div className="relative hidden lg:block">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
@@ -50,7 +50,7 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
               onChange={(event) => onFilterChange(event.target.value)}
               placeholder="Search titles…"
               aria-label="Filter PDFs by file name"
-              className={cn("h-10 w-64 rounded-full border border-neutral-300 bg-white/80 pr-10 pl-10 text-sm text-neutral-900 caret-[#e50914] transition-colors placeholder:text-neutral-500 focus:bg-white xl:w-72 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-neutral-400 dark:focus:bg-white/10", FOCUS_RED)}
+              className={cn("h-10 w-64 rounded-full border border-neutral-300 bg-white/80 pr-10 pl-10 text-sm text-neutral-900 caret-brand transition-colors placeholder:text-neutral-500 focus:bg-white xl:w-72 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-neutral-400 dark:focus:bg-white/10", FOCUS_RED)}
             />
             {filter && (
               <button
@@ -85,7 +85,7 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
             disabled={uploading}
             aria-busy={uploading}
             className={cn(
-              "grid h-8 w-8 place-items-center rounded-md bg-[#e50914] text-white transition-colors hover:bg-[#f40612] active:translate-y-px disabled:cursor-progress disabled:opacity-60 min-[360px]:h-9 min-[360px]:w-9 sm:inline-flex sm:h-10 sm:w-auto sm:items-center sm:gap-2 sm:px-4 sm:text-sm sm:font-semibold",
+              "grid h-8 w-8 place-items-center rounded-md bg-brand text-white transition-colors hover:bg-brand-hover active:translate-y-px disabled:cursor-progress disabled:opacity-60 min-[360px]:h-9 min-[360px]:w-9 sm:inline-flex sm:h-10 sm:w-auto sm:items-center sm:gap-2 sm:px-4 sm:text-sm sm:font-semibold",
               FOCUS_RED, FOCUS_OFFSET,
             )}
             aria-label="Upload PDFs"
@@ -108,7 +108,7 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
             }}
             placeholder="Search titles…"
             aria-label="Filter PDFs by file name"
-            className="h-10 min-w-0 flex-1 bg-transparent text-base text-neutral-900 caret-[#e50914] placeholder:text-neutral-500 focus:outline-none dark:text-white dark:placeholder:text-neutral-400"
+            className="h-10 min-w-0 flex-1 bg-transparent text-base text-neutral-900 caret-brand placeholder:text-neutral-500 focus:outline-none dark:text-white dark:placeholder:text-neutral-400"
             autoFocus
           />
           <button

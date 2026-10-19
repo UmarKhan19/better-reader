@@ -11,6 +11,8 @@
   --font-heading: var(--font-sans);
   --font-display: var(--font-bebas-neue);
   --color-ring: var(--ring);
+  --color-brand: var(--brand-red);
+  --color-brand-hover: var(--brand-red-hover);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -55,6 +57,8 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --radius: 0.625rem;
+  --brand-red: #e50914;
+  --brand-red-hover: #f40612;
   --scroll-thumb: oklch(0.8 0 0);
   --scroll-thumb-hover: oklch(0.62 0 0);
 }
@@ -100,7 +104,7 @@
   }
   /* Browser surfaces belong to the palette too. */
   ::selection {
-    background-color: #e50914;
+    background-color: var(--brand-red);
     color: #fff;
   }
   ::-webkit-scrollbar {

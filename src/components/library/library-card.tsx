@@ -22,7 +22,7 @@ export type LibraryCardProps = {
 
 const CARD_CONTROL = cn(
   "grid h-8 w-8 place-items-center rounded-md bg-black/75 text-white ring-1 ring-white/15 transition-colors [@media(pointer:coarse)]:h-9 [@media(pointer:coarse)]:w-9",
-  "hover:bg-[#e50914] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914] disabled:opacity-50",
+  "hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50",
 );
 /** Visible on touch and keyboard, revealed on hover where hover exists. */
 const CARD_CONTROL_REVEAL =
@@ -41,7 +41,7 @@ export const LibraryCard = memo(function LibraryCard({
     : undefined;
 
   return (
-    <div className="group relative aspect-[2/3] overflow-hidden rounded-md bg-neutral-200 ring-1 ring-neutral-900/10 transition duration-300 ease-out hover:z-10 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/25 hover:ring-neutral-900/20 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-[#e50914] motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:bg-neutral-900 dark:ring-white/10 dark:hover:ring-white/25">
+    <div className="group relative aspect-[2/3] overflow-hidden rounded-md bg-neutral-200 ring-1 ring-neutral-900/10 transition duration-300 ease-out hover:z-10 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/25 hover:ring-neutral-900/20 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-brand motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:bg-neutral-900 dark:ring-white/10 dark:hover:ring-white/25">
       <Link
         href={`/read/${item.id}`}
         prefetch={false}
@@ -87,7 +87,7 @@ export const LibraryCard = memo(function LibraryCard({
               </div>
               {progress.numPages > 0 && (
                 <div className="mt-1.5 h-[3px] overflow-hidden rounded-full bg-white/25">
-                  <div className="h-full rounded-full bg-[#e50914]" style={{ width: `${progressPercent(progress)}%` }} />
+                  <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercent(progress)}%` }} />
                 </div>
               )}
             </>
@@ -95,7 +95,7 @@ export const LibraryCard = memo(function LibraryCard({
         </div>
       </Link>
       <div className={cn("absolute top-1.5 left-1.5 flex gap-1.5", CARD_CONTROL_REVEAL)}>
-        <label className={cn(CARD_CONTROL, "cursor-pointer hover:bg-white hover:text-black", "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-[#e50914]")} title="Add cover image">
+        <label className={cn(CARD_CONTROL, "cursor-pointer hover:bg-white hover:text-black", "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-brand")} title="Add cover image">
           {coverBusy ? "…" : <ImagePlus className="h-4 w-4" aria-hidden="true" />}
           <input
             type="file"

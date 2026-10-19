@@ -67,7 +67,7 @@ export function LibraryGrid({
             onClick={onUpload}
             disabled={uploading}
             className={cn(
-              "mt-2 inline-flex items-center gap-2 rounded-md bg-[#e50914] px-6 py-3 font-semibold text-white transition-colors hover:bg-[#f40612] active:translate-y-px disabled:cursor-progress disabled:opacity-60",
+              "mt-2 inline-flex items-center gap-2 rounded-md bg-brand px-6 py-3 font-semibold text-white transition-colors hover:bg-brand-hover active:translate-y-px disabled:cursor-progress disabled:opacity-60",
               FOCUS_RED, FOCUS_OFFSET,
             )}
           >
@@ -86,10 +86,10 @@ export function LibraryGrid({
                   onClick={onUpload}
                   disabled={uploading}
                   className={cn(
-                    "relative flex aspect-[2/3] flex-col items-center justify-center gap-3 overflow-hidden rounded-md border border-dashed border-neutral-400 bg-neutral-100/50 text-neutral-600 transition-colors duration-200 hover:border-[#e50914] hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-progress",
+                    "relative flex aspect-[2/3] flex-col items-center justify-center gap-3 overflow-hidden rounded-md border border-dashed border-neutral-400 bg-neutral-100/50 text-neutral-600 transition-colors duration-200 hover:border-brand hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-progress",
                     "dark:border-white/15 dark:bg-white/[0.03] dark:text-neutral-400 dark:hover:border-white/30 dark:hover:bg-white/[0.06] dark:hover:text-neutral-200",
                     FOCUS_RED,
-                    dragOver && "border-[#e50914] bg-[#e50914]/5 text-[#e50914] dark:border-[#e50914] dark:bg-[#e50914]/10 dark:text-[#e50914]",
+                    dragOver && "border-brand bg-brand/5 text-brand dark:border-brand dark:bg-brand/10 dark:text-brand",
                   )}
                   aria-busy={uploading}
                   aria-label="Upload PDFs"
@@ -105,7 +105,7 @@ export function LibraryGrid({
                   {!uploading && <span className="-mt-1 px-2 text-center text-xs text-neutral-600 dark:text-neutral-400">or drop them here</span>}
                   {uploading && (
                     <span className="absolute inset-x-0 bottom-0 h-1 bg-neutral-900/10 dark:bg-white/10" aria-hidden="true">
-                      <span className="block h-full bg-[#e50914] transition-[width] duration-300" style={{ width: `${uploadProgress ?? 0}%` }} />
+                      <span className="block h-full bg-brand transition-[width] duration-300" style={{ width: `${uploadProgress ?? 0}%` }} />
                     </span>
                   )}
                 </button>

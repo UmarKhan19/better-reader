@@ -51,7 +51,7 @@ export function ThemeSelect({
           title={label}
           className={cn(
             "grid h-9 w-9 place-items-center rounded-full transition-colors sm:h-8 sm:w-8",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e50914]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
             theme === value
               ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
               : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100",

@@ -1,5 +1,5 @@
 .root {
-  --reader-accent: #e50914;
+  --reader-accent: var(--brand-red);
   --reader-accent-ink: #d10812;
   --reader-canvas: #ededed;
   --reader-chrome: #fafafa;

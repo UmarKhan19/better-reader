@@ -140,8 +140,8 @@ export function Library() {
       </main>
       {dragOver && (
         <div className="pointer-events-none fixed inset-0 z-50 p-3 sm:p-6" aria-hidden="true">
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#e50914]/80 bg-neutral-950/80 backdrop-blur-sm">
-            <Upload className="h-8 w-8 text-[#e50914]" aria-hidden="true" />
+          <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-brand/80 bg-neutral-950/80 backdrop-blur-sm">
+            <Upload className="h-8 w-8 text-brand" aria-hidden="true" />
             <p className={`${DISPLAY} text-3xl tracking-wider text-white md:text-4xl`}>Drop to upload</p>
             <p className="text-sm text-white/60">PDFs stay on this device</p>
           </div>
