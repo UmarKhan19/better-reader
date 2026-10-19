@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { readerSearchSnapshot, ReaderSearchController } from "./reader-search-state";
+import { ReaderSearchController } from "./reader-search-controller";
+import { readerSearchSnapshot } from "./reader-search-state";
 
 export function useReaderSearch(pdf: PDFDocumentProxy | null, query: string, enabled: boolean) {
   const controller = useMemo(() => new ReaderSearchController(pdf), [pdf]);

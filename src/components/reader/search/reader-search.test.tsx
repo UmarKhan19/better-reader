@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReaderSearchPanel, readerSearchStatus } from "./reader-search-panel";
-import { emptyReaderSearchState, highlightSearchText, readerSearchSnapshot } from "./reader-search-state";
+import { emptyReaderSearchState, readerSearchSnapshot } from "./reader-search-state";
+import { highlightSearchText } from "./reader-search-text";
 
 const noChange = () => {};
 
@@ -89,7 +90,7 @@ test("useReaderSearch snapshot hides stale query and PDF metadata before effects
     assert.equal(changed.highlightText("<old>"), "&lt;old&gt;");
     assert.deepEqual(readerSearchSnapshot(old, "", enabled).results, []);
     const replacedPdf = readerSearchSnapshot(emptyReaderSearchState(8), "old", enabled);
-    assert.equal(replacedPdf.total, 8);
+    assert.equal(replacedPdf.pageCount, 8);
     assert.deepEqual(replacedPdf.results, []);
     assert.equal(replacedPdf.highlightText("old"), "old");
   }

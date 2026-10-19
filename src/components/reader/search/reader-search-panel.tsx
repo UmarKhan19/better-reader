@@ -10,13 +10,13 @@ import styles from "./reader-search.module.css";
 export function readerSearchStatus(state: ReaderSearchState, query: string) {
   if (!query.trim()) return "Search this PDF's text. Image-only pages cannot be searched.";
   if (state.searching) {
-    const progress = state.scanned === 0 ? "Preparing search…" : `Searching… ${state.scanned} of ${state.total} pages checked.`;
+    const progress = state.scanned === 0 ? "Preparing search…" : `Searching… ${state.scanned} of ${state.pageCount} pages checked.`;
     return state.error ? `${progress} ${state.error}` : progress;
   }
-  if (state.error) return `${state.scanned} of ${state.total} pages checked. ${state.error}`;
-  if (!state.total || state.activeQuery !== query.trim()) return "Search will be available when the PDF is ready.";
+  if (state.error) return `${state.scanned} of ${state.pageCount} pages checked. ${state.error}`;
+  if (!state.pageCount || state.activeQuery !== query.trim()) return "Search will be available when the PDF is ready.";
   if (!state.results.length) return "No matches in searchable text. Image-only or scanned pages may have no text; OCR is not available.";
-  return `${state.results.length} ${state.results.length === 1 ? "page" : "pages"} with matches. ${state.scanned} of ${state.total} pages checked.`;
+  return `${state.results.length} ${state.results.length === 1 ? "page" : "pages"} with matches. ${state.scanned} of ${state.pageCount} pages checked.`;
 }
 
 export function ReaderSearchPanel({ query, onQueryChange, state, onNavigate, currentPage }: {
@@ -56,6 +56,7 @@ export function ReaderSearchPanel({ query, onQueryChange, state, onNavigate, cur
                 <span>Page {result.page}</span>
                 <span>{result.matches} {result.matches === 1 ? "match" : "matches"}</span>
               </span>
+              {/* Snippet is built by markRanges/escapeSearchHtml, never raw PDF text. */}
               <span className={styles.snippet} dangerouslySetInnerHTML={{ __html: result.snippet }} />
             </button>
           </li>

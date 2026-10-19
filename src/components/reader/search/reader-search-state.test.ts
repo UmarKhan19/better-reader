@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import {
-  emptyReaderSearchState, escapeSearchHtml, highlightSearchText, readerSearchSnapshot, ReaderSearchController, SEARCH_LIMITS,
-} from "./reader-search-state";
+import { emptyReaderSearchState, escapeSearchHtml, readerSearchSnapshot, SEARCH_LIMITS } from "./reader-search-state";
+import { highlightSearchText } from "./reader-search-text";
+import { ReaderSearchController } from "./reader-search-controller";
 
 type Item = { str: string; hasEOL?: boolean; transform?: number[]; width?: number; height?: number; dir?: string };
 function document(pages: (string | Item[] | Error)[], calls: number[] = []) {
@@ -193,7 +193,7 @@ test("replacement PDFs have isolated results, progress, metadata and text caches
   const second = new ReaderSearchController(document(["second phrase", "unmatched"]), scheduler);
   assert.deepEqual(second.getCacheSize(), { pages: 0, chars: 0 });
   assert.equal(second.getSnapshot().scanned, 0);
-  assert.equal(second.getSnapshot().total, 2);
+  assert.equal(second.getSnapshot().pageCount, 2);
   assert.equal(state.highlightText("first phrase", { pageNumber: 1, itemIndex: 0 }), "first phrase");
   assert.deepEqual((await search(second, scheduler, "first phrase")).results, []);
 });
@@ -400,11 +400,11 @@ test("reader-search retries failed pages on reopen without replacing already-mat
 
 test("reader-search bounds retry metadata as well as results for unreadable PDFs", async () => {
   const scheduler = schedule();
-  const total = SEARCH_LIMITS.retryPages + 10;
-  const controller = new ReaderSearchController(document(Array.from({ length: total }, () => new Error("no text"))), scheduler);
+  const pageCount = SEARCH_LIMITS.retryPages + 10;
+  const controller = new ReaderSearchController(document(Array.from({ length: pageCount }, () => new Error("no text"))), scheduler);
   const state = await search(controller, scheduler, "needle");
-  assert.equal(state.scanned, total);
-  assert.ok(state.error!.includes(`${total} pages`));
+  assert.equal(state.scanned, pageCount);
+  assert.ok(state.error!.includes(`${pageCount} pages`));
   assert.equal(state.truncated, true);
 });
 

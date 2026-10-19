@@ -5,6 +5,8 @@ export const pureModules = [
   "components/reader/reader-preferences",
   "components/reader/navigation/reader-navigation",
   "components/reader/navigation/reader-outline",
+  "components/reader/search/reader-search-text",
+  "components/reader/search/reader-search-controller",
   "components/reader/search/reader-search-state",
   "components/reader/chrome/reader-ui-state",
   "components/reader/chrome/reader-thumbnails",

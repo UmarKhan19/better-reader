@@ -10,7 +10,7 @@ Start with the owner for the behavior being changed. `src/app/` adapts Next.js r
 | `src/components/reader/` | Document lifetime and composition | `pdf-reader-loader.tsx`, `pdf-reader.tsx` |
 | `reader/navigation/` | Book-session persistence, navigation history and outline | `use-reading-session.ts`, `reader-navigation.ts`, `reader-outline.ts`, `use-reader-outline.ts` |
 | `reader/viewport/` | Geometry, placement, gestures, visible window, canvas allocation and rendering | `reader-viewport.tsx`; allocation limits in `reader-limits.json` |
-| `reader/search/` | Bounded literal text search, cancellation, caching and safe highlights | `ReaderSearchController` in `reader-search-state.ts` |
+| `reader/search/` | Bounded literal text search, cancellation, caching and safe highlights | `ReaderSearchController` in `reader-search-controller.ts`; text helpers in `reader-search-text.ts` |
 | `reader/chrome/` | Panel transitions, focus, fullscreen, feedback, keyboard input and controls | `use-reader-chrome.ts`, `reader-ui-state.ts`, `reader-header.tsx` |
 | `src/lib/reading-progress.ts` | Saved progress format, legacy decoding, page/offset normalization and delayed writes | `parseSavedProgress`, `parseReadingLocation`, `createProgressWriter` |
 | `src/lib/browser-storage.ts` | Per-book settings/bookmark keys and browser reads/writes | `readStorage`, `writeStorage` |
@@ -88,7 +88,7 @@ The raw index is independent of covers. `catalog.ts` composes index reading and 
 | Preferences, navigation | `reader/reader-preferences.ts`, `reader/navigation/use-reading-session.ts`, `reader-navigation.ts`, `reader-outline.ts`, `use-reader-outline.ts` | `bun test src/components/reader/reader-preferences.test.ts src/components/reader/navigation`, then `bun run test:browser -- navigation` |
 | Chrome, keyboard, focus | `reader/chrome/use-reader-chrome.ts`, `use-reader-keyboard.ts`, `reader-ui-state.ts`, `reader-page-controls.tsx`, `reader-shortcuts.tsx`, `reader-dialog.tsx` | `bun test src/components/reader/chrome`, then `bun run test:browser -- navigation` |
 | Rendering, zoom, crop | `reader/viewport/reader-viewport.tsx`, `reader-page-surface.tsx`, `reader-budgeted-raster.tsx`, `reader-tile.tsx`, `reader-crop-canvas.ts`, `reader-raster-budget.ts`, `reader-render-queue.tsx`, `reader-geometry.ts`, `reader-crop.ts` | `bun test src/components/reader/viewport`, then `bun run test:browser -- rendering gestures` |
-| Search | `reader/search/reader-search-state.ts`, `reader-search-panel.tsx`, `use-reader-search.ts` | `bun test src/components/reader/search`, then `bun run test:browser -- search` |
+| Search | `reader/search/reader-search-text.ts`, `reader-search-controller.ts`, `reader-search-state.ts`, `reader-search-panel.tsx`, `use-reader-search.ts` | `bun test src/components/reader/search`, then `bun run test:browser -- search` |
 | PDF HTTP, streaming | `lib/server/http/host-guard.ts`, `pdf-http.ts`, `serve-file.ts`; `app/api/pdfs/**`; `reader/reader-load-options.ts` | `bun test src/lib/server/http src/app/api/pdfs/routes.test.ts src/components/reader/reader-load-options.test.ts`, then `bun run test:browser -- navigation`; external `bun run test:reader` |
 | Background index | `lib/server/book-index/index.ts`, `worker-client.ts`, `worker.mjs`, `protocol.mjs`; `lib/server/pdf-store/book-index-files.ts`; `instrumentation.ts` | `bun test src/lib/server/book-index src/lib/server/pdf-store`; no browser group (the worker runs outside the app) |
 
