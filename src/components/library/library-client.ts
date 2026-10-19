@@ -1,7 +1,7 @@
 import type { PdfItem } from "@/types/pdf";
+import type { ApiError, PdfListResponse, PdfMutationResponse } from "@/types/api";
 
 export type SkippedFile = { name: string; reason: string };
-type UploadResponse = { items?: PdfItem[] };
 export type UploadResult = { items: PdfItem[]; skipped: SkippedFile[]; failed: File[] };
 
 /** Must match the server's rule in app/api/pdfs/route.ts; the server re-checks anyway. */
@@ -12,7 +12,7 @@ function isPdfFile(file: File) {
 export async function listPdfs(): Promise<PdfItem[]> {
   const response = await fetch("/api/pdfs", { cache: "no-store" });
   if (!response.ok) throw new Error("Library request failed");
-  const data = await response.json() as { items?: PdfItem[] };
+  const data = await response.json() as PdfListResponse;
   return data.items ?? [];
 }
 
@@ -40,14 +40,14 @@ function uploadPdf(file: File, onProgress: (loaded: number) => void): Promise<Pd
       if (xhr.status < 200 || xhr.status >= 300) {
         // A file the server refuses is a per-file outcome, not a failed batch.
         if (xhr.status >= 400 && xhr.status < 500) {
-          const body = parseJson(xhr.responseText) as { error?: string } | null;
+          const body = parseJson(xhr.responseText) as ApiError | null;
           reject(new UploadRejected(body?.error ?? "couldn't be saved (rejected by the server)"));
           return;
         }
         reject(new Error("Couldn't upload. Check your connection and try again."));
         return;
       }
-      const item = (parseJson(xhr.responseText) as UploadResponse | null)?.items?.[0];
+      const item = (parseJson(xhr.responseText) as PdfListResponse | null)?.items?.[0];
       if (item && typeof item.id === "string") resolve(item);
       else reject(new UploadRejected("saved, but the reply couldn't be read — reload the library"));
     };
@@ -102,7 +102,7 @@ export async function addCover(id: string, file: File): Promise<PdfItem | undefi
   formData.append("cover", file);
   const response = await fetch(`/api/pdfs/${id}/cover`, { method: "POST", body: formData });
   if (!response.ok) throw new Error("Cover upload failed");
-  const data = await response.json() as { item?: PdfItem };
+  const data = await response.json() as PdfMutationResponse;
   return data.item;
 }
 

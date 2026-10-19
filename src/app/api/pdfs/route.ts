@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { forbiddenHost } from "@/lib/server/http/host-guard";
 import { listPdfs, savePdf } from "@/lib/server/pdf-store";
 import { queueBookIndex } from "@/lib/server/book-index";
+import type { ApiError, PdfListResponse } from "@/types/api";
 
 /** The uploader sends the file bytes as the raw body; the name travels in a header. */
 function uploadName(header: string | null): string {
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
   const forbidden = forbiddenHost(request);
   if (forbidden) return forbidden;
   const items = await listPdfs();
-  return NextResponse.json({ items });
+  return NextResponse.json<PdfListResponse>({ items });
 }
 
 export async function POST(request: Request) {
@@ -38,13 +39,13 @@ export async function POST(request: Request) {
   if (forbidden) return forbidden;
   const name = uploadName(request.headers.get("x-file-name"));
   if (!request.body || !isPdf(name, request.headers.get("content-type"))) {
-    return NextResponse.json({ error: "not a PDF" }, { status: 400 });
+    return NextResponse.json<ApiError>({ error: "not a PDF" }, { status: 400 });
   }
   try {
     const item = await savePdf(request.body, name);
     queueBookIndex(item.id);
-    return NextResponse.json({ items: [item] }, { status: 201 });
+    return NextResponse.json<PdfListResponse>({ items: [item] }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: saveFailureReason(error) }, { status: 500 });
+    return NextResponse.json<ApiError>({ error: saveFailureReason(error) }, { status: 500 });
   }
 }

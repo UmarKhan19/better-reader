@@ -3,6 +3,7 @@ import { forbiddenHost } from "@/lib/server/http/host-guard";
 import { isValidPdfId, pdfFilePath, deletePdf, restorePdf } from "@/lib/server/pdf-store";
 import { serveFile } from "@/lib/server/http/serve-file";
 import { queueBookIndex } from "@/lib/server/book-index";
+import type { ApiError, OkResponse, PdfMutationResponse } from "@/types/api";
 
 async function servePdf(request: Request, id: string) {
   const forbidden = forbiddenHost(request);
@@ -37,8 +38,8 @@ export async function DELETE(request: Request, context: Context) {
   const forbidden = forbiddenHost(request);
   if (forbidden) return forbidden;
   const ok = await deletePdf((await context.params).id);
-  if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  if (!ok) return NextResponse.json<ApiError>({ error: "Not found" }, { status: 404 });
+  return NextResponse.json<OkResponse>({ ok: true });
 }
 
 /** Brings a deleted PDF back into the library (undo delete). */
@@ -47,14 +48,14 @@ export async function POST(request: Request, context: Context) {
   if (forbidden) return forbidden;
   const url = new URL(request.url);
   if (url.searchParams.get("action") !== "restore") {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json<ApiError>({ error: "Not found" }, { status: 404 });
   }
   try {
     const item = await restorePdf((await context.params).id);
-    if (!item) return NextResponse.json({ error: "Nothing to restore" }, { status: 404 });
+    if (!item) return NextResponse.json<ApiError>({ error: "Nothing to restore" }, { status: 404 });
     queueBookIndex(item.id);
-    return NextResponse.json({ item });
+    return NextResponse.json<PdfMutationResponse>({ item });
   } catch {
-    return NextResponse.json({ error: "Restore failed" }, { status: 500 });
+    return NextResponse.json<ApiError>({ error: "Restore failed" }, { status: 500 });
   }
 }

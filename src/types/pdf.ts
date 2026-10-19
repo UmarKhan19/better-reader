@@ -7,4 +7,6 @@ export type PdfItem = {
   // Canonical cover URL served by /api/pdfs/[id]/cover.
   hasCover?: boolean;
   coverUrl?: string;
+  // Cache-busting value used in coverUrl; part of the browser-visible response.
+  coverVersion?: string;
 };

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { forbiddenHost } from "@/lib/server/http/host-guard";
 import { COVER_MAX_BYTES, isValidPdfId, resolveCoverFilePath, saveCover, deleteCover } from "@/lib/server/pdf-store";
 import { serveFile } from "@/lib/server/http/serve-file";
+import type { ApiError, OkResponse, PdfMutationResponse } from "@/types/api";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -62,7 +63,7 @@ export async function POST(request: Request, context: Context) {
     if (!isMultipart) {
       const declared = Number(request.headers.get("content-length") ?? "");
       if (Number.isFinite(declared) && declared > COVER_MAX_BYTES) {
-        return NextResponse.json({ error: "Cover image is too large. Use an image under 10 MB." }, { status: 413 });
+        return NextResponse.json<ApiError>({ error: "Cover image is too large. Use an image under 10 MB." }, { status: 413 });
       }
     }
     let file: File | null = null;
@@ -77,22 +78,22 @@ export async function POST(request: Request, context: Context) {
       }
     }
     if (!file) {
-      return NextResponse.json({ error: "No cover image provided" }, { status: 400 });
+      return NextResponse.json<ApiError>({ error: "No cover image provided" }, { status: 400 });
     }
     const result = await saveCover(id, file);
     if (!result.ok) {
       if (result.reason === "unsupported") {
-        return NextResponse.json({ error: "Unsupported cover image. Use PNG, JPEG, WebP, GIF, AVIF or BMP." }, { status: 400 });
+        return NextResponse.json<ApiError>({ error: "Unsupported cover image. Use PNG, JPEG, WebP, GIF, AVIF or BMP." }, { status: 400 });
       }
       if (result.reason === "too-large") {
-        return NextResponse.json({ error: "Cover image is too large. Use an image under 10 MB." }, { status: 413 });
+        return NextResponse.json<ApiError>({ error: "Cover image is too large. Use an image under 10 MB." }, { status: 413 });
       }
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json<ApiError>({ error: "Not found" }, { status: 404 });
     }
-    return NextResponse.json({ item: result.item }, { status: 201 });
+    return NextResponse.json<PdfMutationResponse>({ item: result.item }, { status: 201 });
   } catch (error) {
     console.error("Cover upload failed", error);
-    return NextResponse.json({ error: "Cover upload failed" }, { status: 500 });
+    return NextResponse.json<ApiError>({ error: "Cover upload failed" }, { status: 500 });
   }
 }
 
@@ -104,8 +105,8 @@ export async function DELETE(request: Request, context: Context) {
   const forbidden = forbiddenHost(request);
   if (forbidden) return forbidden;
   const id = (await context.params).id;
-  if (!isValidPdfId(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!isValidPdfId(id)) return NextResponse.json<ApiError>({ error: "Not found" }, { status: 404 });
   const ok = await deleteCover(id);
-  if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  if (!ok) return NextResponse.json<ApiError>({ error: "Not found" }, { status: 404 });
+  return NextResponse.json<OkResponse>({ ok: true });
 }
