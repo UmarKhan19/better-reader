@@ -126,7 +126,7 @@ AI indexes stay under `data/ai/<book-id>/` during the same 30-day trash window, 
 
 ## Checks
 
-Run typechecking, lint, unit tests and the production build with:
+Run typechecking, lint/import rules, unit tests and the production build with:
 
 ```sh
 bun run check
