@@ -55,7 +55,7 @@ BENCH_OUTPUT=/tmp/reader-throttled.json bun run benchmark:reader
 
 Stop only your own server afterward. Do not restart someone else's development server.
 
-For routine regression checks, `bun run test:browser` uses the existing production build and starts its own isolated server/library instead. It generates synthetic PDFs and uses a prebuilt empty test index to avoid inference/model downloads. Shared browser helpers live in `scripts/lib/reader-browser.mjs`; PDF fixtures live in `tests/fixtures/`. This smoke suite is not a representative-book benchmark.
+For routine regression checks, `bun run test:browser` uses the existing production build and starts its own isolated server/library instead. It generates synthetic PDFs and uses a prebuilt empty test index to avoid inference/model downloads. Shared browser helpers live in `scripts/lib/reader-launch.mjs`, `reader-cdp.mjs` and `reader-expressions.mjs`; PDF fixtures live in `tests/fixtures/`. This smoke suite is not a representative-book benchmark.
 
 `test:reader` uses agent-browser with a unique explicit temporary profile. It checks HTTP caching/ranges, keyboard navigation, all layouts, crop controls, fractional restoration, bookmarks, paper/themes, focus/dialogs, Search focus and retained highlights, Back, thumbnail virtualization, pixel limits, text selection, 320px/landscape overflow and axe accessibility. Set `READER_PDF_ID` to an existing document. `READER_SCREENSHOTS` saves a desktop/mobile batch; paths are resolved before passing them to the browser daemon.
 

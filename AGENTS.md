@@ -4,6 +4,7 @@ Better Reader is a single-user, disk-backed PDF library with browser-local readi
 
 ## Find the owner
 
+- Orientation: repo directory `better-kindle`, package `better-reader`, product "Better Reader"; do not rename them.
 - For a behavior change, read [docs/architecture.md](docs/architecture.md) for flows, ownership and the matching checks.
 - For product behavior, read [PRODUCT.md](PRODUCT.md). For library visuals, read [DESIGN.md](DESIGN.md). For domain terminology, read [CONTEXT.md](CONTEXT.md).
 - For rendering, gestures or loading changes, read [docs/reader-performance.md](docs/reader-performance.md) and the scoped reader instructions.
@@ -18,7 +19,7 @@ For reader interaction or runtime wiring changes, also build and run `bun run te
 ## Protect local work
 
 - Use a disposable `BETTER_READER_DATA_DIR` for an agent-owned server. Leave the user's server and personal library alone.
-- Keep tests next to their owner. Filesystem-backed tests import `tests/helpers/library.ts` before store/route modules and reset their fixture before each case.
+- Keep tests next to their owner. `tests/preload.ts` configures a disposable data directory before test modules load; filesystem-backed tests still import `tests/helpers/library.ts` for reset and cleanup.
 - Normal source searches use `.ignore`. Read generated/vendor files or the lockfile explicitly only when the task requires them. Keep private library data out of search indexes and model context.
 - Update callers, colocated tests, worker launch paths and documentation pointers when moving code. Preserve Next's generated instructions below.
 

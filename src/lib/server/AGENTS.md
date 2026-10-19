@@ -6,4 +6,4 @@
 - Preserve original PDFs byte for byte, cover signature validation, Host validation and HTTP range/validator behavior.
 - `book-index/worker.mjs` runs directly under Node. Moving it requires updating `worker-client.ts`, its tests and deployment instructions. Keep the IPC protocol checked on both sides.
 - Model inference and private extracted text stay on the server. The retrieval Interface returns bounded evidence without vectors; deletion during inference must not return trash evidence.
-- Filesystem tests import `tests/helpers/library.ts` before store/route modules and call its reset/cleanup hooks. Use its owned temporary directory rather than the real `data/` folder.
+- `tests/preload.ts` configures a disposable data directory before store modules load. Filesystem tests import `tests/helpers/library.ts` for reset/cleanup and must never use the real `data/` folder.

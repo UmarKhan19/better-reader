@@ -9,3 +9,16 @@
 - **Outline**: a document's table of contents, with nested entries and destinations that may be unavailable.
 - **Passage**: a piece of extracted book text that retains its original page and can be returned as evidence.
 - **Trash**: a deleted book that remains eligible for restore until its retention window expires.
+
+## Code names
+
+- Book: `PdfItem` on the browser/wire; `StoredPdfRecord` on disk.
+- Original PDF: `uploads/<id>.pdf`.
+- Page count: reader `total` (legacy name; new code should say `pageCount`).
+- Reading location: `ReadingLocation`; reading progress: `SavedReadingProgress`.
+- Bookmark: `number[]` in `better-reader:bookmarks:<id>`.
+- Outline: `OutlineEntry`.
+- Passage: `IndexedChunk` in `book-index`.
+- Trash: `TrashRecord` and `data/trash.json`.
+
+The checkout directory is `better-kindle`, the package name is `better-reader`, and the product is "Better Reader". These names are intentional; do not rename them.

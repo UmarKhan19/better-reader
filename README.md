@@ -126,43 +126,13 @@ AI indexes stay under `data/ai/<book-id>/` during the same 30-day trash window, 
 
 ## Checks
 
-Run typechecking, lint/import rules, unit tests and the production build with:
-
-```sh
-bun run check
-bun run build
-```
-
-For a reproducible browser suite after building:
+`bun run check` runs typechecking, lint/import rules and unit tests. After `bun run build`, run the browser suite:
 
 ```sh
 bun run test:browser
 ```
 
-It creates a synthetic library and its own production server, verifies original fixture bytes, then cleans up. It needs Node.js 22+, Chromium and the `agent-browser` CLI. A prebuilt test index avoids model downloads; it does not test real-model retrieval quality.
-
-Run a focused group against the same isolated setup while iterating:
-
-```sh
-bun run test:browser -- library
-bun run test:browser -- search
-```
-
-Each group establishes its own starting state. The default full suite also covers navigation/persistence, rendering and gestures. The library group exercises uploads, covers, delete/undo and response ordering through the real UI. CI runs the full browser suite after building.
-
-The external-server checks below use an existing PDF and disposable browser profiles. They do not upload or delete library files. Supply IDs explicitly for a benchmark; the default base URL is `http://127.0.0.1:3100` for all checks.
-
-```sh
-# Terminal 1
-bun run start -- --port 3100
-
-# Terminal 2
-READER_URL=http://127.0.0.1:3100 READER_PDF_ID=your-pdf-id bun run test:reader
-READER_URL=http://127.0.0.1:3100 READER_PDF_ID=your-pdf-id bun run test:reader:interactions
-READER_URL=http://127.0.0.1:3100 READER_PDF_IDS=pdf-id-1,pdf-id-2 bun run benchmark:reader
-```
-
-The checks cover reader navigation, layouts, persistence, search, gestures, accessibility, and rendering limits. See [docs/reader-performance.md](docs/reader-performance.md) for browser requirements, benchmark options, and measured results. Throttled Chromium results are not measurements from a physical phone.
+It owns its production server, synthetic library and browser profiles, and needs Node.js 22+, Chromium and the `agent-browser` CLI. Focused groups run with `bun run test:browser -- navigation` (or `search`, `rendering`, `gestures`, `library`). External-server reader checks and benchmarks use an existing PDF and a server you started. See [docs/architecture.md](docs/architecture.md#test-tiers) for the command matrix and [docs/reader-performance.md](docs/reader-performance.md) for benchmark options and measurement caveats.
 
 ## Deployment
 
@@ -170,20 +140,6 @@ Better Reader needs one long-running server process and a persistent, writable d
 
 ## Architecture
 
-| Part | Responsibility |
-| --- | --- |
-| `src/app/` | Next.js pages and PDF API routes |
-| `src/lib/server/pdf-store/` | JSON index, PDF and cover files, soft-delete, restore and safe derived-index publication |
-| `src/lib/server/book-index/` | Local embedding worker, checked process protocol, per-book indexes and evidence retrieval |
-| `src/lib/server/http/` | Host guard, file streaming and HTTP range/validator behavior |
-| `src/instrumentation.ts` | Queues unfinished or missing indexes on server startup |
-| `src/components/library/` | Library data flow, upload, search, cards, covers, and feedback |
-| `src/components/reader/` | PDF.js reader, navigation state, virtualized rendering, search, and settings |
-| `src/lib/reading-progress.ts` | Shared saved-progress format, compatibility and delayed writes |
-| Browser `localStorage` | Theme and per-book progress, bookmarks, and preferences |
-
-The server serves original PDFs directly to PDF.js. The reader requests byte ranges as needed; it does not copy or rewrite a document to open it.
+The Next.js app stores uploads on disk and serves original PDFs directly to PDF.js. The reader requests byte ranges as needed; it does not copy or rewrite a document to open it. For module ownership, change areas, invariants and test tiers, see [docs/architecture.md](docs/architecture.md). For rendering limits and measurement, see [docs/reader-performance.md](docs/reader-performance.md).
 
 Keep `src/lib/server/book-index/*.mjs` and installed dependencies alongside the production build. The worker runs those files directly with Node.js, outside Next.js bundling. Automated unit tests do not download models or launch automatic indexing workers.
-
-For code ownership, task-specific checks and refactoring constraints, see [docs/architecture.md](docs/architecture.md).
