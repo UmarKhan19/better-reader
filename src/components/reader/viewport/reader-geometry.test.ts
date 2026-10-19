@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adjacentWindowPage, effectiveLayout, FULL_PAGE, fraction, locationAt, locationTop, pageSize, pageWindow, readerGeometry, spreadPages } from "./reader-geometry";
+import { adjacentWindowPage, effectiveLayout, FULL_PAGE, fraction, locationAt, locationTop, MAX_PAGE_WIDTH, pageSize, pageWindow, readerGeometry, SPREAD_MIN_WIDTH, spreadPages } from "./reader-geometry";
 import type { Size } from "./reader-geometry";
 
 function geometry(overrides: Partial<Parameters<typeof readerGeometry>[0]> = {}) {
@@ -10,7 +10,7 @@ function geometry(overrides: Partial<Parameters<typeof readerGeometry>[0]> = {})
 
 test("fit width uses the available reader width and caps oversized desktop pages", () => {
   assert.deepEqual(pageSize({ width: 600, height: 900 }, { width: 350, height: 700 }, "fit-width", 1), { width: 350, height: 525 });
-  assert.equal(pageSize({ width: 600, height: 900 }, { width: 2000, height: 700 }, "fit-width", 1).width, 1120);
+  assert.equal(pageSize({ width: 600, height: 900 }, { width: 2000, height: 700 }, "fit-width", 1).width, MAX_PAGE_WIDTH);
 });
 
 test("fit page fits portrait and landscape without changing aspect ratios", () => {
@@ -31,7 +31,7 @@ test("lazy geometry estimates the long document without inspecting any page", ()
   assert.equal(sizes.size, 0);
   assert.equal(result.pages.length, 419);
   assert.equal(result.pages[0].width, 1000);
-  assert.equal(geometry({ available: { width: 2000, height: 800 } }).width, 1120);
+  assert.equal(geometry({ available: { width: 2000, height: 800 } }).width, MAX_PAGE_WIDTH);
 });
 
 test("mixed-size discovery preserves fractional anchors through recalculation", () => {
@@ -49,7 +49,7 @@ test("mixed-size discovery preserves fractional anchors through recalculation", 
 });
 
 test("integer browser scroll positions keep explicit fractional page-top jumps on their target", () => {
-  const result = geometry({ available: { width: 1120, height: 740 } });
+  const result = geometry({ available: { width: MAX_PAGE_WIDTH, height: 740 } });
   for (const page of result.pages) {
     // scrollTop rounds CSS pixels while PDF page heights and accumulated tops do not.
     const actualTop = Math.round(28 + page.top) - 28;
@@ -63,7 +63,7 @@ test("single and desktop spreads only include the requested page pair", () => {
   assert.deepEqual(geometry({ layout: "single", active: 37 }).pages.map((p) => p.page), [37]);
   const spread = geometry({ layout: "spread", active: 38 });
   assert.deepEqual(spread.pages.map((p) => p.page), [37, 38]);
-  assert.ok(spread.width <= 1120);
+  assert.ok(spread.width <= MAX_PAGE_WIDTH);
   assert.equal(spread.pages[1].top, 0);
   assert.ok(spread.pages[1].left > spread.pages[0].width);
   assert.equal(locationAt(spread, 120, 38).page, 38);
@@ -78,8 +78,8 @@ test("directional prefetch uses spread edges, including the final odd page", () 
 });
 
 test("spread fallback does not mutate the saved preference and fits 320px", () => {
-  assert.equal(effectiveLayout("spread", 899), "continuous");
-  assert.equal(effectiveLayout("spread", 900), "spread");
+  assert.equal(effectiveLayout("spread", SPREAD_MIN_WIDTH - 1), "continuous");
+  assert.equal(effectiveLayout("spread", SPREAD_MIN_WIDTH), "spread");
   for (const width of [320, 390, 844]) {
     const result = geometry({ layout: "spread", available: { width, height: 700 } });
     assert.equal(result.layout, "continuous"); assert.ok(result.width <= width);

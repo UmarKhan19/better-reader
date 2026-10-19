@@ -1,4 +1,5 @@
 import { clampZoom, type ReaderLayout, type ViewMode } from "../reader-preferences";
+import limits from "./reader-limits.json";
 import type { ReadingLocation } from "@/lib/reading-progress";
 
 export type Size = { width: number; height: number };
@@ -6,8 +7,10 @@ export type CropBox = { x: number; y: number; width: number; height: number };
 export const FULL_PAGE: CropBox = { x: 0, y: 0, width: 1, height: 1 };
 export const ESTIMATED_PAGE: Size = { width: 612, height: 792 };
 export const PAGE_GAP = 20;
+export const MAX_PAGE_WIDTH = limits.maxPageWidth;
+export const SPREAD_MIN_WIDTH = limits.spreadMinWidth;
 export function pageSize(natural: Size, available: Size, mode: ViewMode, zoom: number): Size {
-  const width = Math.max(1, Math.min(1120, available.width));
+  const width = Math.max(1, Math.min(MAX_PAGE_WIDTH, available.width));
   const height = Math.max(1, available.height);
   const ratio = Math.max(1, natural.height) / Math.max(1, natural.width);
   const pageWidth = mode === "fit-width" ? width : mode === "fit-page" ? Math.min(width, height / ratio)
@@ -19,7 +22,7 @@ export type PageBox = Size & { page: number; top: number; left: number; fullWidt
 export type ReaderGeometry = Size & { pages: PageBox[]; layout: ReaderLayout };
 export function fraction(value: number) { return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0; }
 export function effectiveLayout(layout: ReaderLayout, width: number): ReaderLayout {
-  return layout === "spread" && width < 900 ? "continuous" : layout;
+  return layout === "spread" && width < SPREAD_MIN_WIDTH ? "continuous" : layout;
 }
 export function adjacentWindowPage(pages: readonly { page: number }[], direction: number, total: number) {
   const edge = direction < 0 ? Math.min(...pages.map((p) => p.page)) : Math.max(...pages.map((p) => p.page));
@@ -39,7 +42,7 @@ export function readerGeometry({ total, active, layout: requestedLayout, availab
   const layout = effectiveLayout(requestedLayout, available.width);
   const numbers = layout === "continuous" ? Array.from({ length: total }, (_, i) => i + 1)
     : layout === "spread" ? spreadPages(active, total) : [active];
-  const slot = layout === "spread" ? { ...available, width: (Math.min(1120, available.width) - PAGE_GAP) / 2 } : available;
+  const slot = layout === "spread" ? { ...available, width: (Math.min(MAX_PAGE_WIDTH, available.width) - PAGE_GAP) / 2 } : available;
   const pages = numbers.map((page): PageBox => {
     const natural = sizes.get(page) ?? sizes.values().next().value ?? ESTIMATED_PAGE;
     const crop = crops.get(page) ?? FULL_PAGE;

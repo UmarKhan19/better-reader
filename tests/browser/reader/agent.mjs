@@ -37,7 +37,7 @@ export async function createAgentReader(group) {
     return evaluate("Number(document.querySelector('input[aria-label=\"Page number\"]').nextElementSibling.textContent.replace(/[^0-9]/g, ''))");
   }
   function fitWidth() {
-    wait(`(() => { const s=document.querySelector("[data-reader-stage]"), m=document.querySelector("main"); if(!s || !m || s.getAttribute("aria-busy")!=="false") return false; const c=getComputedStyle(m); return Math.abs(s.getBoundingClientRect().width - Math.min(1120, Math.floor(m.clientWidth-parseFloat(c.paddingLeft)-parseFloat(c.paddingRight)))) < 2; })()`);
+    wait(`(() => { const s=document.querySelector("[data-reader-stage]"), m=document.querySelector("main"); if(!s || !m || s.getAttribute("aria-busy")!=="false") return false; const c=getComputedStyle(m); return Math.abs(s.getBoundingClientRect().width - Math.min(${limits.maxPageWidth}, Math.floor(m.clientWidth-parseFloat(c.paddingLeft)-parseFloat(c.paddingRight)))) < 2; })()`);
   }
   function layout() {
     const result = evaluate(`(() => {

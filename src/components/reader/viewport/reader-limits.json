@@ -3,5 +3,7 @@
   "shownPixelBudget": 6000000,
   "pagePixelLimit": 3000000,
   "tilePixelBudget": 6000000,
-  "maxTiles": 6
+  "maxTiles": 6,
+  "maxPageWidth": 1120,
+  "spreadMinWidth": 900
 }
