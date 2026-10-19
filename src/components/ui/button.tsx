@@ -1,3 +1,4 @@
+// Generated shadcn/base-ui primitive; extend through variants, do not hand-edit it as app code.
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"

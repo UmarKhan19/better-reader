@@ -10,6 +10,15 @@ Better Reader is a single-user, disk-backed PDF library with browser-local readi
 - For rendering, gestures or loading changes, read [docs/reader-performance.md](docs/reader-performance.md) and the scoped reader instructions.
 - Use CodeGraph when available, then inspect current source and callers. The graph is a navigation aid, not a substitute for tests.
 
+## Scoped instructions
+
+- Read [src/components/reader/AGENTS.md](src/components/reader/AGENTS.md) before changing reader composition, rendering, gestures or loading.
+- Read [src/lib/server/AGENTS.md](src/lib/server/AGENTS.md) before changing routes, the PDF store, book indexing or HTTP streaming.
+- Read [scripts/AGENTS.md](scripts/AGENTS.md) before changing browser checks, benchmarks or their shared script helpers.
+- Read [tests/browser/AGENTS.md](tests/browser/AGENTS.md) before changing browser scenarios, fixtures or group selection.
+
+`public/pdf.worker.min.mjs` is a vendored copy of `node_modules/pdfjs-dist/build/pdf.worker.min.mjs`; replace it from the installed package, never edit it by hand.
+
 ## Verify the change
 
 Run `bun run check` after source changes. It includes route type generation, application/worker typechecking, import rules, lint and unit tests. Tests normally use `node:test` under Bun; the preload mock test uses `bun:test` deliberately.
