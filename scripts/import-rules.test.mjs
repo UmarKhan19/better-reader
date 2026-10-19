@@ -6,28 +6,196 @@ import { ESLint } from "eslint";
 const eslint = new ESLint({ cwd: fileURLToPath(new URL("../", import.meta.url)) });
 async function violations(filePath, code) {
   const [result] = await eslint.lintText(code, { filePath });
-  return result.messages.filter((message) => message.ruleId === "no-restricted-syntax");
+  assert.ok(!result.messages.some((message) => message.fatal), JSON.stringify(result.messages));
+  return result.messages.filter((message) => message.ruleId === "ownership/imports");
 }
 
-test("browser/shared import rules cover static imports, exports and literal dynamic imports", async () => {
-  for (const code of [
-    'import { listPdfs } from "@/lib/server/pdf-store"; export { listPdfs };',
-    'export { listPdfs } from "../../lib/server/pdf-store";',
-    'export * from "@/lib/server/book-index";',
-    'export const load = () => import("@/lib/server/book-index");',
-    'export const load = () => import("node:fs");',
-  ]) assert.ok((await violations("src/components/library/example.ts", code)).length > 0, code);
+async function assertImports(filePath, sources, allowed) {
+  for (const source of sources) {
+    const quoted = JSON.stringify(source);
+    for (const code of [
+      `import { value } from ${quoted}; export { value };`,
+      `export { value } from ${quoted};`,
+      `export * from ${quoted};`,
+      `export const load = () => import(${quoted});`,
+    ]) assert.equal((await violations(filePath, code)).length === 0, allowed, `${filePath}: ${code}`);
+  }
+}
+
+test("browser/shared code rejects bare and node-prefixed builtins in every import form", async () => {
+  for (const filePath of [
+    "src/components/library/example.ts",
+    "src/components/reader/chrome/use-reader-chrome.ts",
+    "src/lib/pdf-title.ts",
+  ]) {
+    await assertImports(filePath, ["fs", "fs/promises", "node:fs", "node:fs/promises", "path/posix", "node:test"], false);
+    await assertImports(filePath, ["fs-extra", "path-to-regexp", "node-fetch", "pdfjs-dist"], true);
+  }
 });
 
-test("library prewarming and public server operations are allowed, private store imports are not", async () => {
-  assert.equal((await violations("src/components/library/example.ts", 'export { prewarmReader } from "@/components/reader/reader-preload";')).length, 0);
-  assert.ok((await violations("src/components/library/example.ts", 'export const load = () => import("@/components/reader/pdf-reader");')).length > 0);
-  assert.equal((await violations("src/lib/server/book-index/example.ts", 'export { publishBookIndex } from "../pdf-store";')).length, 0);
-  assert.ok((await violations("src/lib/server/book-index/example.ts", 'export { serialized } from "../pdf-store/storage";')).length > 0);
+test("browser/shared code rejects alias and relative server imports", async () => {
+  for (const [filePath, sources] of [
+    ["src/components/library/example.ts", ["@/lib/server/pdf-store", "../../lib/server/pdf-store/index", "@/lib/server/book-index"]],
+    ["src/components/reader/chrome/use-reader-chrome.ts", ["../../../lib/server/http", "@/lib/server/http"]],
+    ["src/lib/pdf-title.ts", ["./server/pdf-store", "@/lib/server"]],
+  ]) await assertImports(filePath, sources, false);
 });
 
-test("pure reader models cannot acquire a UI dependency", async () => {
-  assert.ok((await violations("src/components/reader/viewport/reader-render-state.ts", 'export { rasterFrame } from "./reader-page-surface";')).length > 0);
-  assert.ok((await violations("src/lib/reading-progress.ts", 'export { useState } from "react";')).length > 0);
-  assert.equal((await violations("src/components/reader/viewport/reader-geometry.ts", 'export { clampZoom } from "../reader-preferences";')).length, 0);
+test("all store subpaths are private to the store, including new filenames and nested paths", async () => {
+  for (const filePath of [
+    "src/app/api/pdfs/example.ts",
+    "src/lib/server/book-index/example.ts",
+    "src/lib/server/http/example.mjs",
+    "src/lib/server/new-owner/example.ts",
+    "src/lib/another-owner/example.ts",
+    "scripts/example.mjs",
+    "tests/helpers/another-helper.ts",
+  ]) await assertImports(filePath, [
+    "@/lib/server/pdf-store/storage",
+    "@/lib/server/pdf-store/record",
+    "@/lib/server/pdf-store/record.ts",
+    "@/lib/server/pdf-store/future-record.mjs",
+    "@/lib/server/pdf-store/nested/future.json",
+    "@/lib/server/pdf-store/index/private",
+    "@/lib/server/pdf-store/index-other",
+  ], false);
+
+  for (const [filePath, source] of [
+    ["src/lib/server/book-index/example.ts", "../pdf-store/record"],
+    ["src/lib/server/http/example.mjs", "../pdf-store/future-record.mjs"],
+    ["src/app/api/pdfs/example.ts", "../../../lib/server/pdf-store/record"],
+    ["scripts/example.mjs", "../src/lib/server/pdf-store/record"],
+    ["src/lib/server/book-index/example.ts", "@/lib/server/pdf-store/../pdf-store/record"],
+  ]) await assertImports(filePath, [source], false);
+});
+
+test("store root and index remain public to server callers", async () => {
+  await assertImports("src/lib/server/book-index/example.ts", [
+    "@/lib/server/pdf-store",
+    "@/lib/server/pdf-store/index",
+    "@/lib/server/pdf-store/index.ts",
+    "@/lib/server/pdf-store/index.js",
+    "../pdf-store",
+    "../pdf-store/index",
+    "../pdf-store/index.ts",
+    "../pdf-store/../pdf-store/index",
+    "node:fs/promises",
+    "fs/promises",
+  ], true);
+});
+
+test("store internals may collaborate through alias and relative imports", async () => {
+  await assertImports("src/lib/server/pdf-store/catalog.ts", [
+    "./record",
+    "./future-record.mjs",
+    "@/lib/server/pdf-store/storage",
+    "@/lib/server/pdf-store/nested/future",
+  ], true);
+  await assertImports("src/lib/server/pdf-store/nested/example.ts", ["../record", "../storage"], true);
+});
+
+test("the existing disposable fixture and unit tests may reset private store state", async () => {
+  await assertImports("tests/helpers/library.ts", ["../../src/lib/server/pdf-store/covers"], true);
+  await assertImports("src/lib/server/book-index/example.test.ts", ["../pdf-store/record"], true);
+});
+
+test("library code can use only the reader preload entry", async () => {
+  await assertImports("src/components/library/example.ts", [
+    "@/components/reader/reader-preload",
+    "../reader/reader-preload",
+    "../reader/reader-preload.ts",
+  ], true);
+  await assertImports("src/components/library/nested/example.ts", ["../../reader/reader-preload.js"], true);
+  await assertImports("src/components/library/example.ts", [
+    "@/components/reader",
+    "@/components/reader/pdf-reader",
+    "../reader/chrome/reader-ui-state",
+    "../reader/chrome/use-reader-chrome",
+    "../reader/chrome/use-reader-keyboard",
+    "../reader/reader-preload/private",
+  ], false);
+});
+
+test("reader code never depends on the library, through aliases or relative paths", async () => {
+  for (const [filePath, sources] of [
+    ["src/components/reader/pdf-reader.tsx", ["@/components/library", "../library/library"]],
+    ["src/components/reader/chrome/use-reader-chrome.ts", ["@/components/library/library", "../../library/use-library"]],
+    ["src/components/reader/chrome/use-reader-keyboard.ts", ["../../library/library-client", "@/components/reader/../library/library"]],
+    ["src/components/reader/viewport/reader-geometry.ts", ["../../reader/../library/library"]],
+  ]) await assertImports(filePath, sources, false);
+});
+
+test("every pure leaf, including chrome UI state, rejects React", async () => {
+  for (const filePath of [
+    "src/lib/reading-progress.ts",
+    "src/components/reader/reader-preferences.ts",
+    "src/components/reader/navigation/reader-navigation.ts",
+    "src/components/reader/search/reader-search-state.ts",
+    "src/components/reader/chrome/reader-ui-state.ts",
+    "src/components/reader/chrome/reader-thumbnails.ts",
+    "src/components/reader/chrome/reader-scrubber-state.ts",
+    ...["geometry", "crop", "tiles", "raster-budget", "render-state", "render-window", "render-scheduler", "text-renderer"]
+      .map((name) => `src/components/reader/viewport/reader-${name}.ts`),
+  ]) await assertImports(filePath, ["react"], false);
+});
+
+test("pure leaves reject all reader UI and hooks, not just named chrome controls", async () => {
+  await assertImports("src/components/reader/chrome/reader-ui-state.ts", [
+    "react-dom/client",
+    "react-pdf",
+    "next/navigation",
+    "@/components/ui/button",
+    "../../ui/button",
+    "@/components/reader/search/reader-search",
+    "../search/reader-search",
+    "./use-reader-chrome",
+    "./use-reader-keyboard",
+    "../navigation/reader-outline",
+    "../viewport/reader-use-zoom",
+    "../viewport/reader-render-queue",
+    "../viewport/reader-page-surface",
+    "../viewport/new-overlay",
+    "@/components/reader/chrome/../search/reader-search",
+    "@/lib/use-example",
+  ], false);
+  await assertImports("src/components/reader/viewport/reader-render-state.ts", ["./reader-page-surface", "../search/reader-search"], false);
+  await assertImports("src/lib/reading-progress.ts", ["../components/reader/search/reader-search"], false);
+});
+
+test("pure leaves may share models, data and browser utilities", async () => {
+  await assertImports("src/components/reader/chrome/reader-ui-state.ts", [
+    "../reader-preferences",
+    "../navigation/reader-navigation",
+    "../search/reader-search-state",
+    "./reader-thumbnails",
+    "./reader-scrubber-state",
+    "../viewport/reader-geometry",
+    "../viewport/reader-limits.json",
+    "@/lib/reading-progress",
+    "@/lib/browser-storage",
+    "pdfjs-dist",
+  ], true);
+  await assertImports("src/components/reader/viewport/reader-geometry.ts", ["../reader-preferences", "../chrome/reader-ui-state.js"], true);
+});
+
+test("reader chrome retains its shared ScheduledPdfPage render queue dependency", async () => {
+  for (const filePath of [
+    "src/components/reader/chrome/reader-sidebar.tsx",
+    "src/components/reader/chrome/reader-scrubber.tsx",
+    "src/components/reader/chrome/use-reader-chrome.ts",
+  ]) await assertImports(filePath, ["../viewport/reader-render-queue", "@/components/reader/viewport/reader-render-queue"], true);
+});
+
+test("side-effect imports and type-only imports/reexports also respect ownership", async () => {
+  for (const [filePath, source] of [
+    ["src/lib/pdf-title.ts", "fs/promises"],
+    ["src/lib/server/book-index/example.ts", "../pdf-store/record"],
+    ["src/components/reader/chrome/reader-ui-state.ts", "../search/reader-search"],
+    ["src/components/reader/chrome/use-reader-keyboard.ts", "../../library/library"],
+  ]) for (const code of [
+    `import "${source}";`,
+    `import type { Value } from "${source}"; export type { Value };`,
+    `export type { Value } from "${source}";`,
+    `export * as dependency from "${source}";`,
+  ]) assert.ok((await violations(filePath, code)).length > 0, `${filePath}: ${code}`);
 });
