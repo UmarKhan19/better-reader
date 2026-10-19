@@ -1,4 +1,6 @@
 import { afterAll, expect, mock, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 let readerImports = 0;
 mock.module("./pdf-reader", () => {
@@ -67,4 +69,12 @@ test("reader-preload absorbs optional warm failures", async () => {
   prewarmReader();
   await flush();
   expect(failedFetch).toHaveBeenCalledTimes(1);
+});
+
+test("the prewarm and the loader keep the same literal client-only target", () => {
+  for (const file of ["./reader-preload.ts", "./pdf-reader-loader.tsx"]) {
+    const source = readFileSync(fileURLToPath(new URL(file, import.meta.url)), "utf8");
+    expect(source, `${file} must keep the literal "./pdf-reader" reference in sync with the other file`)
+      .toContain('"./pdf-reader"');
+  }
 });
