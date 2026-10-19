@@ -141,6 +141,15 @@ bun run test:browser
 
 It creates a synthetic library and its own production server, verifies original fixture bytes, then cleans up. It needs Node.js 22+, Chromium and the `agent-browser` CLI. A prebuilt test index avoids model downloads; it does not test real-model retrieval quality.
 
+Run a focused group against the same isolated setup while iterating:
+
+```sh
+bun run test:browser -- library
+bun run test:browser -- search
+```
+
+Each group establishes its own starting state. The default full suite also covers navigation/persistence, rendering and gestures. The library group exercises uploads, covers, delete/undo and response ordering through the real UI. CI runs the full browser suite after building.
+
 The external-server checks below use an existing PDF and disposable browser profiles. They do not upload or delete library files. Supply IDs explicitly for a benchmark; the default base URL is `http://127.0.0.1:3100` for all checks.
 
 ```sh

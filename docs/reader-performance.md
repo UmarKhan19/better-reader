@@ -19,19 +19,25 @@ Continuous scrolling is the default. Single-page and desktop spread modes remain
 
 Visible base rasters share 6 MP; old and incoming base rasters together stay within 12 MP. Each canvas stays below 3 MP. At most six high-resolution tiles add 6 MP. Crop sampling uses one canvas no larger than 256×256. The viewport budget is below 18.07 MP, about 73 MB of RGBA backing pixels. This excludes thumbnails, the scrubber preview, GPU copies, worker heaps and PDF.js internal caches. A holder-count cap must never omit visible pages.
 
-The interaction check observed 14 panoramic pages visible together and a rapid-zoom backing-pixel peak below 12 MP. Those observations do not replace the allocation limits or prove the absence of all memory leaks.
+Historical measurements live in [the loading comparison report](reports/reader-loading-comparison.md). Allocation limits are current contracts; past observations are not release budgets or leak tests.
 
 ## Run the checks
 
-Use an existing Chromium installation and Node 22+. No browser download or additional npm package is required. Start a production server you own on a free loopback port:
+Use Node 22+, Chromium and the `agent-browser` CLI. Routine regression checks own their production server, library and browser profiles:
 
 ```sh
 bun run check
 bun run build
-node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3100
+bun run test:browser
 ```
 
-In another terminal:
+For representative-book measurements, start a separate server against a benchmark library you own. Agents must use a disposable data directory rather than the personal library:
+
+```sh
+BETTER_READER_DATA_DIR=/path/to/benchmark-library node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3100
+```
+
+Then, in another terminal:
 
 ```sh
 READER_URL=http://localhost:3100 bun run test:reader
@@ -55,7 +61,7 @@ For routine regression checks, `bun run test:browser` uses the existing producti
 
 `test:reader:interactions` creates its own disposable CDP browser. It checks trusted pinch/double-tap/Ctrl-wheel input and anchoring, actual crop enlargement, tiled high zoom, rapid zoom limits, pointer seeking with exactly one accepted commit, and internal PDF link/Back navigation. Small generated PDFs are intercepted inside that browser to test more than six short pages and failed-document retry. They are never uploaded or written into the library. A headless touch event is not physical-device verification.
 
-All checks preserve original files. Reading progress and preferences written during tests live only in disposable browser profiles. Fullscreen permission and physical touch/browser differences still need real-device checking. The delegated independent review did not run after the provider usage limit; the parent performed the browser, visual and regression checks directly.
+All checks preserve original files. Reading progress and preferences written during tests live only in disposable browser profiles. Fullscreen permission and physical touch/browser differences still need real-device checking.
 
 ## Benchmark configuration
 
@@ -75,7 +81,7 @@ All checks preserve original files. Reading progress and preferences written dur
 | `BENCH_SETTLE_MS` | 1000 | Final observation window |
 | `BENCH_OUTPUT` | Timestamped OS-temp path | Raw JSON and summaries |
 
-The historical reports below used a 419-page book and a 24-page document. To repeat the benchmark, supply IDs from your own library. The benchmark requires a multi-page PDF.
+To repeat the benchmark, supply IDs from the benchmark library. It requires a multi-page PDF.
 
 ## What the numbers mean
 
@@ -88,18 +94,3 @@ p50/p95 use nearest rank. With three repeats, p95 is the maximum; these samples 
 Request records include status, Range/Content-Range, body/encoded bytes, cancellation and cache flags. Page-target CDP can omit worker-script completion events. `incompleteRequests` and separate Resource Timing expose that gap. Do not add all Resource Timing bytes to CDP totals or call an incomplete page-target count whole-browser wire traffic. Repeated disk-cache range bodies are not fresh network transfers.
 
 Samples include canvas count/pixels, main-target heap and DOM counters. `canvasPixels * 4` estimates RGBA backing bytes only. Finite samples without forced GC are not a leak test.
-
-## Recorded production comparison
-
-The final comparison uses a fresh copy of the original source and the integrated app, both built with default Next 16.4.2 Turbopack. The original source's library was copied locally for the baseline; originals were untouched. This avoids comparing the earlier delegated Webpack baseline against Turbopack. Raw reports and logs are retained outside the source tree under `~/.cache/bk-reader-work.mnkP7x/final-evidence/`.
-
-Desktop settings are 1440×900, DPR 1, CPU 1, no network throttle, three fresh profiles per book, eight extra jumps and a 1000 ms settle. The table reports median milliseconds from the conservative readiness proxy:
-
-| Document | Before / after open | Before / after cached turn | Before / after uncached jump |
-| --- | ---: | ---: | ---: |
-| 419 pages | 546 / 607 | 53 / 26 | 104 / 113 |
-| 24 pages | 604 / 699 | 74 / 34 | 49 / 107 |
-
-The mobile smoke uses 390×844, CPU 4, 100 ms latency and 750,000/250,000 B/s, with one repeat and four extra jumps. Large-document opening changed from about 11.6 s to 4.1 s. Its uncached end-of-book jump changed from 135 ms to about 2.1 s because bytes now arrive on demand. The small document remained around 3.3 s before and 3.9 s after; additional reader work still costs CPU even with streaming enabled.
-
-These results support faster cached desktop turns and lower initial large-document loading delay under this throttle. They do not support an across-the-board speedup: unthrottled cold opens and some uncached jumps regressed. A 390px throttled Chromium window is an emulation, not a measured phone. Increase repeats and test representative hardware before setting release performance budgets.

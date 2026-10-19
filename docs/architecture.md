@@ -8,10 +8,10 @@ Start with the owner for the behavior being changed. `app/` adapts Next.js reque
 | --- | --- | --- |
 | `src/components/library/` | Listing, filtering, uploads, covers, delete/undo and feedback | `library.tsx`, `use-library.ts`, `library-client.ts` |
 | `src/components/reader/` | Document lifetime and composition | `pdf-reader-loader.tsx`, `pdf-reader.tsx` |
-| `reader/navigation/` | Book-session persistence, navigation history, outline and keyboard input | `use-reading-session.ts`, `reader-navigation.ts` |
+| `reader/navigation/` | Book-session persistence, navigation history and outline | `use-reading-session.ts`, `reader-navigation.ts`, `reader-outline.ts` |
 | `reader/viewport/` | Geometry, placement, gestures, visible window, canvas allocation and rendering | `reader-viewport.tsx`; allocation limits in `reader-limits.json` |
 | `reader/search/` | Bounded literal text search, cancellation, caching and safe highlights | `ReaderSearchController` in `reader-search-state.ts` |
-| `reader/chrome/` | Controls, settings, sidebar, thumbnails and chapter seek | `reader-toolbar.tsx`, `reader-controls.tsx` |
+| `reader/chrome/` | Panel transitions, focus, fullscreen, feedback, keyboard input and controls | `use-reader-chrome.ts`, `reader-ui-state.ts`, `reader-toolbar.tsx` |
 | `src/lib/reading-progress.ts` | Saved progress format, legacy decoding, page/offset normalization and delayed writes | `parseSavedProgress`, `parseReadingLocation`, `createProgressWriter` |
 | `src/lib/browser-storage.ts` | Per-book settings/bookmark keys and browser reads/writes | `readStorage`, `writeStorage` |
 | `src/lib/storage-health.ts` | Per-key save failures and retry notification | External-store subscription |
@@ -20,7 +20,11 @@ Start with the owner for the behavior being changed. `app/` adapts Next.js reque
 | `src/lib/server/http/` | Host validation, file streaming, ranges and HTTP validators | `forbiddenHost`, `serveFile` |
 | `scripts/lib/reader-browser.mjs` | Browser launch/cleanup, readiness and check configuration | Shared by checks and benchmark |
 
-`src/types/pdf.ts` is the current library record contract. `src/lib/pdf-title.ts` owns display-title normalization. Theme behavior lives in `src/lib/theme.ts`; its pre-paint script must match `applyTheme()`.
+`src/types/pdf.ts` defines browser-visible library fields. The store's private `record.ts` extends them with disk metadata; existing JSON and response fields remain compatible. `src/lib/pdf-title.ts` owns display-title normalization and its colocated tests. Theme behavior lives in `src/lib/theme.ts`; its pre-paint script must match `applyTheme()`.
+
+Use the existing entry files rather than adding directory-wide barrels. The home page imports `library/library.tsx`; the reading page imports `reader/pdf-reader-loader.tsx`; library intent prewarming imports only `reader/reader-preload.ts`. Within the reader, chrome previews share `viewport/reader-render-queue.tsx` with visible pages. That shared queue is intentional; chrome does not own geometry or raster allocation.
+
+Styles follow the same owners. `app/globals.css` holds shared tokens and base treatments; `library/library.module.css` holds library artwork and motion. `reader/reader.module.css` holds the shell and viewer; `reader/chrome/reader-chrome.module.css` holds toolbar, sidebar and dialog styles. Cross-module focus-mode selectors use the root's existing data attributes rather than another module's generated class name.
 
 ## Upload and restore
 
@@ -47,7 +51,9 @@ Book session → progress/preferences/bookmarks → browser localStorage
 
 `useReadingSession()` owns one keyed book lifetime. It flushes delayed progress on page hide, hidden visibility and unmount. Navigation distinguishes observed scrolling from an explicit jump revision; changing the observed location must not issue another scroll placement.
 
-The shared progress decoder does not decide whether a book is unread. Library projection rejects invalid pages and preserves its historical non-JSON numeric fallback, including `+17`. The reader defaults invalid/missing progress to page 1. Library percentages remain page-based; reader percentages include fractional position and navigation endpoints. These differences have compatibility tests and are intentional during this refactor.
+The shared progress decoder does not decide whether a book is unread. Library projection rejects invalid pages and preserves its historical non-JSON numeric fallback, including `+17`. The reader defaults invalid/missing progress to page 1. Library percentages remain page-based; reader percentages include fractional position and navigation endpoints. These differences have compatibility tests. Preserve them unless a product change explicitly requests a migration.
+
+`useReaderChrome()` owns transient UI and browser lifetimes. Its reducer opens Search, dismisses one layer and closes chrome during focus transitions. Keyboard input invokes those commands instead of changing sidebar or panel setters. Document readiness crosses into keyboard/settings as a boolean, not a PDF proxy. Native dialog focus restoration must finish before chrome moves focus to the viewer.
 
 ## Rendering and search
 
@@ -61,10 +67,13 @@ See [reader-performance.md](reader-performance.md) for allocation limits, browse
 
 ESLint checks static imports, re-exports and literal dynamic imports:
 
-- Browser/shared code uses HTTP routes rather than Node or `src/lib/server/` modules.
+- Browser/shared code uses HTTP routes rather than Node built-ins or `src/lib/server/` modules. Both bare and `node:` imports are checked.
 - Library code can import `reader-preload`, not reader internals.
-- Progress, preferences, navigation state, geometry and scheduling stay independent of React UI/hooks.
-- Callers outside `pdf-store/` use its public exports, not its paths, raw index writes or lock.
+- Reader code stays independent of library internals.
+- Progress, preferences, navigation/UI state, geometry and scheduling stay independent of React UI/hooks. Register a new pure module in the lint rule when adding it.
+- Callers outside `pdf-store/` use its root or `index.ts` exports. Every other subpath is private, including newly added files.
+
+The checker resolves static imports, re-exports and literal dynamic imports. Computed module names and `require()` still need review. When adding a pure module, add it to the checker's pure-module list so its React boundary stays enforced.
 
 The raw index is independent of covers. `catalog.ts` composes index reading and cover enrichment, so cover mutations can use the raw index without a circular dependency. Add explicit exports only for real callers; keep internal collaboration inside the owning module.
 
@@ -74,13 +83,16 @@ The raw index is independent of covers. `catalog.ts` composes index reading and 
 
 | Changed behavior | Focused checks |
 | --- | --- |
+| Display titles | `bun test src/lib/pdf-title.test.ts` |
+| Library mutations/UI | `bun test src/components/library`, then `bun run test:browser -- library` |
 | Saved progress/storage | `bun test src/lib/reading-progress.test.ts src/lib/browser-storage.test.ts src/lib/storage-health.test.ts` |
-| Preferences/navigation | `bun test src/components/reader/reader-preferences.test.ts src/components/reader/navigation` |
+| Preferences/navigation | `bun test src/components/reader/reader-preferences.test.ts src/components/reader/navigation`, then `bun run test:browser -- navigation` |
+| Panels/focus/keyboard | `bun test src/components/reader/chrome`, then `bun run test:browser -- navigation` |
 | PDF/cover/trash/publication | `bun test src/lib/server/pdf-store` |
 | Request/response behavior | `bun test src/app/api/pdfs/routes.test.ts` |
 | Worker protocol/lifecycle/retrieval | `bun test src/lib/server/book-index` |
-| Geometry/raster/zoom | `bun test src/components/reader/viewport`, then browser suite |
-| Search | `bun test src/components/reader/search`, then browser suite |
+| Geometry/raster/zoom | `bun test src/components/reader/viewport`, then `bun run test:browser -- rendering gestures` |
+| Search | `bun test src/components/reader/search`, then `bun run test:browser -- search` |
 | Import restrictions | `bun test scripts/import-rules.test.mjs` |
 
 Filesystem-backed cases use `tests/helpers/library.ts`. It configures an owned temporary directory before the first store import, resets metadata/files/cover cache before each case, and restores the environment during cleanup. Those suites are serial because they deliberately exercise one process-wide store and lock. Individual cases must create their own records, so name-filtered runs work.
