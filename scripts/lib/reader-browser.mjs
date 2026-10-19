@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process";
+import assert from "node:assert/strict";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -95,6 +96,63 @@ export async function launchBrowser(config) {
     return { cdp, cleanup };
   } catch (error) { await cleanup(); throw error; }
 }
+
+export async function launchAgentBrowser(config, session) {
+  // Explicit profiles keep user defaults and other named sessions out of these checks.
+  const profile = await mkdtemp(path.join(tmpdir(), "better-reader-browser-"));
+  const flags = ["--session", session, "--profile", profile, "--headed", "false"];
+  if (config.chrome) flags.push("--executable-path", config.chrome);
+  let browserStarted = false, cleaning;
+  const interrupt = () => { void cleanup().finally(() => process.exit(130)); };
+  const terminate = () => { void cleanup().finally(() => process.exit(143)); };
+  const cleanup = () => cleaning ??= (async () => {
+    activeCleanups.delete(cleanup);
+    process.off("SIGINT", interrupt);
+    process.off("SIGTERM", terminate);
+    try { if (browserStarted) browser("close"); } catch (error) { console.warn("Browser cleanup:", error.message); }
+    await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  })();
+  activeCleanups.add(cleanup);
+  process.once("SIGINT", interrupt);
+  process.once("SIGTERM", terminate);
+  function browser(...args) {
+    browserStarted = args[0] !== "close";
+    return execFileSync("agent-browser", [...flags, ...args], {
+      encoding: "utf8", timeout: 30000, stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+  }
+  function evaluate(source) {
+    const output = execFileSync("agent-browser", [...flags, "--json", "eval", "--stdin"], {
+      input: source, encoding: "utf8", timeout: 30000, stdio: ["pipe", "pipe", "pipe"],
+    });
+    const result = JSON.parse(output);
+    assert.equal(result.success, true, JSON.stringify(result.error));
+    return result.data.result;
+  }
+  function wait(source) {
+    const settled = evaluate(`new Promise(resolve => {
+      const deadline=Date.now()+18000;
+      let readySince=0;
+      function poll() {
+        let ready=false;
+        try { ready=Boolean(${source}); } catch {}
+        if (ready) {
+          readySince ||= Date.now();
+          if (Date.now()-readySince >= 80) { resolve(true); return; }
+        } else readySince=0;
+        if (Date.now() >= deadline) { resolve(false); return; }
+        setTimeout(poll,20);
+      }
+      poll();
+    })`);
+    assert.equal(settled, true, `Readiness was not established: ${source}`);
+  }
+  return { browser, evaluate, wait, cleanup };
+}
+
+export const resetStorageExpression = (id, preferences) => `localStorage.clear(); ${preferences
+  ? `localStorage.setItem(${JSON.stringify(`better-reader:settings:${id}`)}, JSON.stringify(${JSON.stringify(preferences)}))`
+  : ""}`;
 
 export const readyExpression = (page) => `(() => {
   const stage = document.querySelector('[data-reader-stage][aria-busy="false"]');

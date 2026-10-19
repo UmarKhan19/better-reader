@@ -14,3 +14,25 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run build
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - uses: browser-actions/setup-chrome@v1
+        id: chromium
+        with:
+          chrome-version: latest
+          install-dependencies: true
+      - run: npm install --global agent-browser@0.35.0
+      - run: bun run build
+      - run: bun run test:browser
+        env:
+          CHROME_BIN: ${{ steps.chromium.outputs.chrome-path }}
