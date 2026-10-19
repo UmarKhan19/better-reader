@@ -14,7 +14,8 @@
 
 - Book: `PdfItem` on the browser/wire; `StoredPdfRecord` on disk.
 - Original PDF: `uploads/<id>.pdf`.
-- Page count: reader `total` (legacy name; new code should say `pageCount`).
+- Page count: reader code and props say `pageCount`; saved progress keeps `numPages`.
+- Reader view mode: `viewMode` means page sizing (`fit-width`, `fit-page`, `actual-size`, `custom`); `layout` separately means `continuous`, `single` or `spread`. The saved settings key remains `viewMode`.
 - Reading location: `ReadingLocation`; reading progress: `SavedReadingProgress`.
 - Bookmark: `number[]` in `better-reader:bookmarks:<id>`.
 - Outline: `OutlineEntry`.
