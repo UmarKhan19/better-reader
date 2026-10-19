@@ -1,13 +1,9 @@
+import { isPdf } from "@/lib/pdf-file";
 import type { PdfItem } from "@/types/pdf";
 import type { ApiError, PdfListResponse, PdfMutationResponse } from "@/types/api";
 
 export type SkippedFile = { name: string; reason: string };
 export type UploadResult = { items: PdfItem[]; skipped: SkippedFile[]; failed: File[] };
-
-/** Must match the server's rule in app/api/pdfs/route.ts; the server re-checks anyway. */
-function isPdfFile(file: File) {
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-}
 
 export async function listPdfs(): Promise<PdfItem[]> {
   const response = await fetch("/api/pdfs", { cache: "no-store" });
@@ -67,7 +63,7 @@ export async function uploadPdfs(files: readonly File[], onProgress: (percent: n
   for (let index = 0; index < list.length; index += 1) {
     const file = list[index];
     const name = file.name || "Unnamed file";
-    if (isPdfFile(file)) {
+    if (isPdf(file.name, file.type)) {
       try {
         items.push(await uploadPdf(file, (loaded) => onProgress(Math.round(((done + loaded) / total) * 100))));
       } catch (error) {

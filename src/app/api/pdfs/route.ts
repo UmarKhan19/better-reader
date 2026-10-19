@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isPdf } from "@/lib/pdf-file";
 import { forbiddenHost } from "@/lib/server/http/host-guard";
 import { listPdfs, savePdf } from "@/lib/server/pdf-store";
 import { queueBookIndex } from "@/lib/server/book-index";
@@ -12,10 +13,6 @@ function uploadName(header: string | null): string {
   } catch {
     return "";
   }
-}
-
-function isPdf(name: string, contentType: string | null) {
-  return contentType === "application/pdf" || name.toLowerCase().endsWith(".pdf");
 }
 
 /** Turns a storage error into a reason a user can act on instead of "couldn't be saved". */
