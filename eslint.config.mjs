@@ -5,22 +5,12 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import { plugin as shadcn } from "@shadcn/lint";
+import { pureModules } from "./scripts/lib/import-policy.mjs";
 
 const sourceRoot = fileURLToPath(new URL("./src/", import.meta.url));
 const modulePath = (file) => file.replace(/\.[cm]?[jt]sx?$/, "");
 const within = (file, directory) => file === directory || file.startsWith(`${directory}/`);
-const pureModules = new Set([
-  "lib/reading-progress",
-  "components/reader/reader-preferences",
-  "components/reader/navigation/reader-navigation",
-  "components/reader/search/reader-search-state",
-  "components/reader/chrome/reader-ui-state",
-  "components/reader/chrome/reader-thumbnails",
-  "components/reader/chrome/reader-scrubber-state",
-  ...["geometry", "crop", "tiles", "raster-budget", "render-state", "render-window", "render-scheduler", "text-renderer"]
-    .map((name) => `components/reader/viewport/reader-${name}`),
-  "components/reader/viewport/reader-limits.json",
-]);
+const pureModuleSet = new Set(pureModules);
 const ownershipImports = {
   meta: {
     type: "problem",
@@ -36,7 +26,7 @@ const ownershipImports = {
   create(context) {
     const file = relative(sourceRoot, context.filename).split(sep).join("/");
     const browser = within(file, "components") || /^lib\/[^/]+$/.test(file);
-    const pure = pureModules.has(modulePath(file));
+    const pure = pureModuleSet.has(modulePath(file));
     function checkImport(node) {
       const source = node.source?.value;
       if (typeof source !== "string") return;
@@ -55,7 +45,7 @@ const ownershipImports = {
       } else if (within(file, "components/reader") && within(target, "components/library")) {
         messageId = "reader";
       } else if (pure && (/^(?:react(?:-dom|-pdf)?|next)(?:\/|$)/.test(source)
-        || (within(target, "components") && !pureModules.has(target))
+        || (within(target, "components") && !pureModuleSet.has(target))
         || /(?:^|\/)(?:use-[^/]+|reader-use-zoom)$/.test(target || modulePath(source)))) {
         messageId = "pure";
       }

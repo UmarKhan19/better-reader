@@ -2,8 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
+import { pureModules } from "./lib/import-policy.mjs";
 
 const eslint = new ESLint({ cwd: fileURLToPath(new URL("../", import.meta.url)) });
+const pureCodeFiles = pureModules.filter((name) => !name.endsWith(".json")).map((name) => `src/${name}.ts`);
 async function violations(filePath, code) {
   const [result] = await eslint.lintText(code, { filePath });
   assert.ok(!result.messages.some((message) => message.fatal), JSON.stringify(result.messages));
@@ -126,17 +128,7 @@ test("reader code never depends on the library, through aliases or relative path
 });
 
 test("every pure leaf, including chrome UI state, rejects React", async () => {
-  for (const filePath of [
-    "src/lib/reading-progress.ts",
-    "src/components/reader/reader-preferences.ts",
-    "src/components/reader/navigation/reader-navigation.ts",
-    "src/components/reader/search/reader-search-state.ts",
-    "src/components/reader/chrome/reader-ui-state.ts",
-    "src/components/reader/chrome/reader-thumbnails.ts",
-    "src/components/reader/chrome/reader-scrubber-state.ts",
-    ...["geometry", "crop", "tiles", "raster-budget", "render-state", "render-window", "render-scheduler", "text-renderer"]
-      .map((name) => `src/components/reader/viewport/reader-${name}.ts`),
-  ]) await assertImports(filePath, ["react"], false);
+  for (const filePath of pureCodeFiles) await assertImports(filePath, ["react"], false);
 });
 
 test("pure leaves reject all reader UI and hooks, not just named chrome controls", async () => {
@@ -146,26 +138,28 @@ test("pure leaves reject all reader UI and hooks, not just named chrome controls
     "next/navigation",
     "@/components/ui/button",
     "../../ui/button",
-    "@/components/reader/search/reader-search",
-    "../search/reader-search",
+    "@/components/reader/search/reader-search-panel",
+    "../search/reader-search-panel",
+    "@/components/reader/search/use-reader-search",
+    "../search/use-reader-search",
     "./use-reader-chrome",
     "./use-reader-keyboard",
-    "../navigation/reader-outline",
     "../viewport/reader-use-zoom",
     "../viewport/reader-render-queue",
     "../viewport/reader-page-surface",
     "../viewport/new-overlay",
-    "@/components/reader/chrome/../search/reader-search",
+    "@/components/reader/chrome/../search/reader-search-panel",
     "@/lib/use-example",
   ], false);
-  await assertImports("src/components/reader/viewport/reader-render-state.ts", ["./reader-page-surface", "../search/reader-search"], false);
-  await assertImports("src/lib/reading-progress.ts", ["../components/reader/search/reader-search"], false);
+  await assertImports("src/components/reader/viewport/reader-render-state.ts", ["./reader-page-surface", "../search/reader-search-panel", "../search/use-reader-search"], false);
+  await assertImports("src/lib/reading-progress.ts", ["../components/reader/search/reader-search-panel", "../components/reader/search/use-reader-search"], false);
 });
 
 test("pure leaves may share models, data and browser utilities", async () => {
   await assertImports("src/components/reader/chrome/reader-ui-state.ts", [
     "../reader-preferences",
     "../navigation/reader-navigation",
+    "../navigation/reader-outline",
     "../search/reader-search-state",
     "./reader-thumbnails",
     "./reader-scrubber-state",
@@ -190,7 +184,7 @@ test("side-effect imports and type-only imports/reexports also respect ownership
   for (const [filePath, source] of [
     ["src/lib/pdf-title.ts", "fs/promises"],
     ["src/lib/server/book-index/example.ts", "../pdf-store/record"],
-    ["src/components/reader/chrome/reader-ui-state.ts", "../search/reader-search"],
+    ["src/components/reader/chrome/reader-ui-state.ts", "../search/reader-search-panel"],
     ["src/components/reader/chrome/use-reader-keyboard.ts", "../../library/library"],
   ]) for (const code of [
     `import "${source}";`,
