@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import styles from "../reader.module.css";
+import styles from "./reader-chrome.module.css";
 
 export function ReaderDialog({ open, title, onClose, children, navigation = false }: {
   open: boolean;

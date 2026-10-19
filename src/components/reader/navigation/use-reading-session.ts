@@ -65,9 +65,6 @@ export function useReadingSession(id: string, total: number | null) {
     setPreferences((previous) => ({ ...previous, viewMode: "custom",
       zoom: clampZoom((previous.viewMode === "custom" ? previous.zoom : effectiveScale) + delta) }));
   }, []);
-  const toggleFocusMode = useCallback(() => {
-    setPreferences((previous) => ({ ...previous, focusMode: !previous.focusMode }));
-  }, []);
   const save = useCallback(() => {
     const saved = [writeStorage(storageKey("settings", id), preferences), writeStorage(storageKey("bookmarks", id), bookmarks)];
     if (total) saved.push(writeStorage(progressStorageKey(id), { ...reading.location, numPages: total }));
@@ -75,5 +72,5 @@ export function useReadingSession(id: string, total: number | null) {
   }, [id, preferences, bookmarks, total, reading.location]);
 
   return { reading, preferences, bookmarks, navigate, jump, goBack, observeLocation, restore,
-    toggleBookmark, updatePreferences, zoomBy, toggleFocusMode, save };
+    toggleBookmark, updatePreferences, zoomBy, save };
 }

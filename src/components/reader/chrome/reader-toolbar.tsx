@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { PageControls, type PageControlsProps } from "./reader-controls";
 import { displayName } from "@/lib/pdf-title";
 import type { ReaderPreferences, ViewMode } from "../reader-preferences";
-import styles from "../reader.module.css";
+import styles from "./reader-chrome.module.css";
 
 export type ReaderHeaderProps = {
   title: string;

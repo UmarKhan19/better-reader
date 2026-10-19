@@ -14,18 +14,20 @@ import { THEME_STORAGE_KEY, useTheme, writeTheme } from "@/components/theme";
 import { KeyboardShortcuts, ReaderDialog } from "./chrome/reader-controls";
 import { ReaderHeader, ReaderMobileFooter } from "./chrome/reader-toolbar";
 import { ReaderSettingsDialog } from "./chrome/reader-settings-dialog";
-import { useReaderKeyboard } from "./navigation/use-reader-keyboard";
+import { useReaderKeyboard } from "./chrome/use-reader-keyboard";
+import { useReaderChrome } from "./chrome/use-reader-chrome";
 import { useReadingSession } from "./navigation/use-reading-session";
 import { ReaderViewport } from "./viewport/reader-viewport";
 import { optionsForPdfSize } from "./reader-load-options";
 import { ReaderSearchPanel, useReaderSearch } from "./search/reader-search";
 import { ReaderScrubber } from "./chrome/reader-scrubber";
-import { ReaderSidebar, type SidebarTab } from "./chrome/reader-sidebar";
+import { ReaderSidebar } from "./chrome/reader-sidebar";
 import { activeChapter, useReaderOutline } from "./navigation/reader-outline";
 import { clampZoom, paperPageColors } from "./reader-preferences";
 import { readingProgress } from "@/lib/reading-progress";
 import type { Size } from "./viewport/reader-geometry";
 import styles from "./reader.module.css";
+import chromeStyles from "./chrome/reader-chrome.module.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
@@ -48,34 +50,31 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
 function BookReader({ id, title, fileSize }: PdfReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLElement>(null);
-  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const programmaticFocusRef = useRef(false);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const total = pdf?.numPages ?? null;
   const {
     reading, preferences, bookmarks, navigate, jump, goBack: back, observeLocation: onLocationChange,
-    restore, toggleBookmark, updatePreferences, zoomBy: changeZoom, toggleFocusMode, save,
+    restore, toggleBookmark, updatePreferences, zoomBy: changeZoom, save,
   } = useReadingSession(id, total);
   const pageNumber = reading.location.page;
   const [available, setAvailable] = useState<Size>({ width: 0, height: 0 });
   const [effectiveScale, setEffectiveScale] = useState(1);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("contents");
-  const [panel, setPanel] = useState<"settings" | "shortcuts" | null>(null);
   const focusMode = preferences.focusMode;
   const pageColors = useMemo(() => paperPageColors(preferences.paper), [preferences.paper]);
-  const [controlsVisible, setControlsVisible] = useState(false);
   const [firstPageReady, setFirstPageReady] = useState(false);
   const [busy, setBusy] = useState(true);
   const [query, setQuery] = useState("");
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [feedback, setFeedback] = useState("");
-  const [programmaticFocus, setProgrammaticFocus] = useState(false);
   const desktop = useMediaQuery("(min-width: 1024px)");
   const coarsePointer = useMediaQuery("(pointer: coarse)");
+  const onFocusModeChange = useCallback((focusMode: boolean) => updatePreferences({ focusMode }), [updatePreferences]);
+  const {
+    sidebarOpen, sidebarTab, panel, controlsVisible, chromeVisible, feedback, programmaticFocus,
+    isFullscreen, fullscreenSupported, closeSidebar, toggleSidebar, selectSidebarTab,
+    closePanel, openSettings, openShortcuts, openSearch, closeTopmostPanel, toggleFullscreen,
+    toggleFocus, revealControls, hideControls, showFeedback, clearProgrammaticFocus,
+  } = useReaderChrome({ containerRef, viewerRef, desktop, ready: firstPageReady, focusMode, onFocusModeChange });
   const storageBlocked = useSyncExternalStore(subscribeStorageBlocked, storageBlockedSnapshot, () => false);
   const { theme, dark, setTheme } = useTheme();
   const outline = useReaderOutline(pdf, firstPageReady);
@@ -83,8 +82,6 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
   const chapter = activeChapter(outline, pageNumber);
   const progress = total ? readingProgress(reading.location, total) : 0;
   const bookmarked = bookmarks.includes(pageNumber);
-  const fullscreenSupported = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
-  const chromeVisible = !focusMode || controlsVisible || panel !== null || sidebarOpen;
 
   useEffect(() => {
     const node = viewerRef.current;
@@ -106,28 +103,6 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, [pdf]);
 
-  useEffect(() => {
-    const handler = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
-  useEffect(() => () => {
-    if (focusTimer.current) clearTimeout(focusTimer.current);
-    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
-  }, []);
-
-  const showFeedback = useCallback((text: string) => {
-    setFeedback(text);
-    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
-    feedbackTimer.current = setTimeout(() => setFeedback(""), 4000);
-  }, []);
-
-  // Focus moved by the reader itself must not paint the full-viewer focus ring.
-  const markViewerFocus = useCallback((value: boolean) => {
-    programmaticFocusRef.current = value;
-    setProgrammaticFocus(value);
-  }, []);
-
   // react-pdf's internal-link viewer retains its initial onItemClick callback.
   const latestJump = useRef(jump);
   useLayoutEffect(() => { latestJump.current = jump; }, [jump]);
@@ -137,26 +112,14 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
   const goBack = useCallback(() => {
     if (!total) return;
     back();
-    if (!desktop) setSidebarOpen(false);
-  }, [total, desktop, back]);
+    if (!desktop) closeSidebar();
+  }, [total, desktop, back, closeSidebar]);
   const onReady = useCallback(() => setFirstPageReady(true), []);
 
   const sidebarNavigate = useCallback((page: number) => {
     jump(page);
-    if (!desktop) setSidebarOpen(false);
-  }, [jump, desktop]);
-  const openSearch = useCallback(() => {
-    setSidebarTab("search");
-    setSidebarOpen(true);
-    setPanel(null);
-    setControlsVisible(true);
-    containerRef.current?.querySelector<HTMLInputElement>("[data-reader-search] input")?.focus();
-  }, []);
-  useEffect(() => {
-    if (!sidebarOpen || sidebarTab !== "search") return;
-    const timer = setTimeout(() => containerRef.current?.querySelector<HTMLInputElement>("[data-reader-search] input")?.focus(), 0);
-    return () => clearTimeout(timer);
-  }, [sidebarOpen, sidebarTab, desktop, firstPageReady]);
+    if (!desktop) closeSidebar();
+  }, [jump, desktop, closeSidebar]);
 
   const retryStorage = useCallback(() => {
     clearStorageFailures();
@@ -177,41 +140,6 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     changeZoom(delta, effectiveScale);
   }, [changeZoom, effectiveScale]);
 
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else if (containerRef.current?.requestFullscreen) await containerRef.current.requestFullscreen();
-      else showFeedback("Fullscreen isn't available in this browser.");
-    } catch {
-      showFeedback("Fullscreen couldn't be opened. You can still use focus mode.");
-    }
-  }, [showFeedback]);
-
-  const revealControls = useCallback(() => {
-    setControlsVisible(true);
-    if (focusTimer.current) clearTimeout(focusTimer.current);
-    if (!focusMode) return;
-    focusTimer.current = setTimeout(() => {
-      const active = document.activeElement;
-      if (!active?.closest("[data-reader-chrome], dialog[open]")) setControlsVisible(false);
-    }, 2400);
-  }, [focusMode]);
-
-  const toggleFocus = useCallback(() => {
-    if (focusTimer.current) clearTimeout(focusTimer.current);
-    toggleFocusMode();
-    setControlsVisible(false);
-    setPanel(null);
-    setSidebarOpen(false);
-    // Only chase focus when the element holding it is about to become inert.
-    const active = document.activeElement;
-    if (!(active instanceof HTMLElement) || !active.closest("dialog[open], [data-reader-chrome]")) return;
-    // Wait for the native modal to close before moving focus out of its inert background,
-    // and keep the programmatic move from painting the full-viewer focus ring.
-    markViewerFocus(true);
-    requestAnimationFrame(() => viewerRef.current?.focus({ preventScroll: true }));
-  }, [markViewerFocus, toggleFocusMode]);
-
   useReaderKeyboard({
     navigate,
     pageNumber,
@@ -222,15 +150,13 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     zoomBy,
     openSearch,
     goBack,
-    historyLength: reading.history.length,
-    markViewerFocus,
-    programmaticFocusRef,
-    pdf,
-    panel,
-    sidebarOpen,
-    focusMode,
-    setSidebarOpen,
-    setPanel,
+    canGoBack: reading.history.length > 0,
+    ready: Boolean(pdf),
+    panelOpen: panel !== null,
+    clearProgrammaticFocus,
+    toggleSidebar,
+    openShortcuts,
+    closeTopmostPanel,
   });
 
   const onDocumentLoad = useCallback((document: PDFDocumentProxy) => {
@@ -241,11 +167,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
   }, [restore]);
 
   const pageControls = { page: pageNumber, total, onNavigate: navigate, onSeek: jump, onMessage: showFeedback };
-  const toggleSidebar = () => setSidebarOpen((value) => !value);
   const toggleCurrentBookmark = () => toggleBookmark(pageNumber);
 
   const sidebar = total && pdf ? <ReaderSidebar pdf={pdf} outline={outline} total={total} current={pageNumber}
-    tab={sidebarTab} onTabChange={setSidebarTab} bookmarks={bookmarks}
+    tab={sidebarTab} onTabChange={selectSidebarTab} bookmarks={bookmarks}
     pageColors={pageColors}
     onNavigate={sidebarNavigate} onToggleBookmark={toggleBookmark}
     searchPanel={<ReaderSearchPanel query={query} onQueryChange={setQuery} state={search}
@@ -255,7 +180,7 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     <div ref={containerRef} className={cn(styles.root, dark && "dark")} data-reader-root
       data-theme={dark ? "dark" : "light"} data-paper={preferences.paper}
       data-focus-mode={focusMode} data-controls-visible={chromeVisible} data-reader-busy={busy}
-      onPointerDown={() => { if (programmaticFocusRef.current) markViewerFocus(false); }}
+      onPointerDown={clearProgrammaticFocus}
       onPointerMove={(event) => {
         if (!focusMode || event.pointerType !== "mouse" || event.buttons || !(event.movementX || event.movementY) || window.getSelection()?.toString()) return;
         const bounds = event.currentTarget.getBoundingClientRect();
@@ -282,7 +207,7 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
         onToggleBookmark={toggleCurrentBookmark}
         toggleFocus={toggleFocus}
         settingsOpen={panel === "settings"}
-        onOpenSettings={() => setPanel("settings")}
+        onOpenSettings={openSettings}
         chromeVisible={chromeVisible}
       />
 
@@ -312,18 +237,18 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
           <div className={styles.documentStatus} role="alert"><p>{loadError ? "This PDF couldn't be opened." : "Unable to open this PDF."}</p>
             <p>Try again, or return to your library.</p>
             <Button variant="outline" size="touch" onClick={() => { setPdf(null); setAttempt((n) => n + 1); }}>Try again</Button>
-            <Link href="/" className={styles.textLink}>Back to library</Link></div>
+            <Link href="/" className={chromeStyles.textLink}>Back to library</Link></div>
         </main>}>
-        {sidebarOpen && desktop && <aside id="reader-sidebar" className={styles.sidebar} data-reader-sidebar>
-          <div className={styles.sidebarHeading}><h2>Document navigation</h2>
-            <Button variant="ghost" size="icon-touch" aria-label="Close document navigation" onClick={() => setSidebarOpen(false)}><X /></Button>
+        {sidebarOpen && desktop && <aside id="reader-sidebar" className={chromeStyles.sidebar} data-reader-sidebar>
+          <div className={chromeStyles.sidebarHeading}><h2>Document navigation</h2>
+            <Button variant="ghost" size="icon-touch" aria-label="Close document navigation" onClick={closeSidebar}><X /></Button>
           </div>{sidebar}
         </aside>}
         <main ref={viewerRef} className={styles.viewer} tabIndex={0} aria-label="PDF page viewer"
           data-programmatic-focus={programmaticFocus || undefined}
           onClick={(event) => {
             if (event.defaultPrevented || !focusMode || (event.target as Element).closest("a, button, input, select") || window.getSelection()?.toString()) return;
-            if (controlsVisible) setControlsVisible(false); else revealControls();
+            if (controlsVisible) hideControls(); else revealControls();
           }}>
           {pdf && <ReaderViewport pdf={pdf} pageNumber={pageNumber} layout={preferences.layout} viewMode={preferences.viewMode}
             zoom={preferences.zoom} cropMargins={preferences.cropMargins} available={available} scrollRef={viewerRef}
@@ -331,8 +256,8 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
             onReady={onReady} onBusyChange={setBusy} highlightText={search.highlightText}
             onZoomChange={onGestureZoom} pageColors={pageColors} />}
         </main>
-        <ReaderDialog open={sidebarOpen && !desktop} title="Document navigation" navigation onClose={() => setSidebarOpen(false)}>
-          <div className={styles.mobileSidebar} data-reader-sidebar>{sidebarOpen && !desktop ? sidebar : null}</div>
+        <ReaderDialog open={sidebarOpen && !desktop} title="Document navigation" navigation onClose={closeSidebar}>
+          <div className={chromeStyles.mobileSidebar} data-reader-sidebar>{sidebarOpen && !desktop ? sidebar : null}</div>
         </ReaderDialog>
       </Document>
 
@@ -358,10 +283,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
 
       <ReaderSettingsDialog
         open={panel === "settings"}
-        onClose={() => setPanel(null)}
+        onClose={closePanel}
         preferences={preferences}
         updatePreferences={updatePreferences}
-        pdf={pdf}
+        ready={Boolean(pdf)}
         effectiveScale={effectiveScale}
         zoomBy={zoomBy}
         theme={theme}
@@ -371,10 +296,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
         fullscreenSupported={fullscreenSupported}
         isFullscreen={isFullscreen}
         toggleFullscreen={toggleFullscreen}
-        onOpenShortcuts={() => setPanel("shortcuts")}
+        onOpenShortcuts={openShortcuts}
         storageBlocked={storageBlocked}
       />
-      <ReaderDialog open={panel === "shortcuts"} title="Keyboard shortcuts" onClose={() => setPanel(null)}><KeyboardShortcuts /></ReaderDialog>
+      <ReaderDialog open={panel === "shortcuts"} title="Keyboard shortcuts" onClose={closePanel}><KeyboardShortcuts /></ReaderDialog>
       <div className="sr-only" role="status" aria-live="polite">Page {pageNumber}{total ? ` of ${total}` : ""}. {bookmarked ? "Bookmarked." : ""}</div>
     </div>
   );

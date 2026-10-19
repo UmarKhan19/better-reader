@@ -3,9 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Focus, Keyboard, Laptop, Maximize, Minimize, Moon, Sun, ZoomIn, ZoomOut } from "lucide-react";
 import { RadioChoices, ReaderDialog } from "./reader-controls";
-import styles from "../reader.module.css";
+import styles from "./reader-chrome.module.css";
 import type { ReaderLayout, ReaderPreferences, ViewMode } from "../reader-preferences";
-import type { PDFDocumentProxy } from "pdfjs-dist";
 import { THEME_STORAGE_KEY, type Theme } from "@/components/theme";
 import { markStorageResult } from "@/lib/storage-health";
 
@@ -14,7 +13,7 @@ export type ReaderSettingsDialogProps = {
   onClose: () => void;
   preferences: ReaderPreferences;
   updatePreferences: (update: Partial<ReaderPreferences>) => void;
-  pdf: PDFDocumentProxy | null;
+  ready: boolean;
   effectiveScale: number;
   zoomBy: (delta: number) => void;
   theme: Theme;
@@ -30,7 +29,7 @@ export type ReaderSettingsDialogProps = {
 
 export function ReaderSettingsDialog(props: ReaderSettingsDialogProps) {
   const {
-    open, onClose, preferences, updatePreferences, pdf, effectiveScale, zoomBy, theme, setTheme,
+    open, onClose, preferences, updatePreferences, ready, effectiveScale, zoomBy, theme, setTheme,
     focusMode, toggleFocus, fullscreenSupported, isFullscreen, toggleFullscreen, onOpenShortcuts, storageBlocked,
   } = props;
   return (
@@ -61,9 +60,9 @@ export function ReaderSettingsDialog(props: ReaderSettingsDialogProps) {
             <div className={styles.settingGroup}>
               <span>Zoom</span>
               <div className={styles.zoomControls}>
-                <Button variant="ghost" size="icon-touch" aria-label="Zoom out" disabled={!pdf} onClick={() => zoomBy(-0.1)}><ZoomOut /></Button>
+                <Button variant="ghost" size="icon-touch" aria-label="Zoom out" disabled={!ready} onClick={() => zoomBy(-0.1)}><ZoomOut /></Button>
                 <output aria-label="Zoom level">{Math.round((preferences.viewMode === "custom" ? preferences.zoom : effectiveScale) * 100)}%</output>
-                <Button variant="ghost" size="icon-touch" aria-label="Zoom in" disabled={!pdf} onClick={() => zoomBy(0.1)}><ZoomIn /></Button>
+                <Button variant="ghost" size="icon-touch" aria-label="Zoom in" disabled={!ready} onClick={() => zoomBy(0.1)}><ZoomIn /></Button>
               </div>
             </div>
           </div>

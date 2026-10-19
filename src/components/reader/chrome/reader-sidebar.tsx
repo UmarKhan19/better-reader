@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { THUMBNAIL_ROW_HEIGHT, thumbnailWindow } from "./reader-thumbnails";
 import type { PdfPageColors } from "../reader-preferences";
 import { activeChapter, type OutlineEntry } from "../navigation/reader-outline";
-import styles from "../reader.module.css";
+import styles from "./reader-chrome.module.css";
 
-export type SidebarTab = "contents" | "pages" | "bookmarks" | "search";
+import type { SidebarTab } from "./reader-ui-state";
 
 const Thumbnail = memo(function Thumbnail({
   pdf, page, current, onNavigate, onKeyDown, pageColors,
