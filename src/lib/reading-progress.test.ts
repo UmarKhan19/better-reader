@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseLibraryProgress, progressPercent } from "../components/library/library-model";
-import { clampPage, clampOffset, createProgressWriter, parseProgress, parseReadingLocation, parseSavedProgress, progressStorageKey, readingProgress, type SavedReadingProgress } from "./reading-progress";
+import { clampPage, clampOffset, createProgressWriter, parseReadingLocation, parseSavedProgress, progressStorageKey, readingProgress, type SavedReadingProgress } from "./reading-progress";
 
 test("page numbers stay finite and within the document", () => {
   assert.equal(clampPage(NaN, 419, 23), 23);
@@ -13,12 +13,12 @@ test("page numbers stay finite and within the document", () => {
 });
 
 test("legacy and current progress formats remain readable", () => {
-  assert.equal(parseProgress("17"), 17);
-  assert.equal(parseProgress('{"page":42,"numPages":419}'), 42);
-  assert.equal(parseProgress('{"page":900}', 419), 419);
-  assert.equal(parseProgress("not json"), 1);
-  assert.equal(parseProgress('{"page":"nonsense"}'), 1);
-  assert.equal(parseProgress(null), 1);
+  assert.equal(parseReadingLocation("17").page, 17);
+  assert.equal(parseReadingLocation('{"page":42,"numPages":419}').page, 42);
+  assert.equal(parseReadingLocation('{"page":900}', 419).page, 419);
+  assert.equal(parseReadingLocation("not json").page, 1);
+  assert.equal(parseReadingLocation('{"page":"nonsense"}').page, 1);
+  assert.equal(parseReadingLocation(null).page, 1);
 });
 
 test("reading progress reaches both page-navigation endpoints and stays bounded", () => {
@@ -35,7 +35,7 @@ test("fractional locations validate offsets and retain legacy progress compatibi
   assert.deepEqual(parseReadingLocation("17"), { page: 17, offset: 0 });
   assert.deepEqual(parseReadingLocation('{"page":42,"numPages":419}'), { page: 42, offset: 0 });
   assert.deepEqual(parseReadingLocation('{"page":42,"offset":0.625,"numPages":419}'), { page: 42, offset: 0.625 });
-  assert.equal(parseProgress('{"page":42,"offset":0.625}'), 42);
+  assert.equal(parseReadingLocation('{"page":42,"offset":0.625}').page, 42);
   assert.deepEqual(parseReadingLocation('{"page":900,"offset":2}', 419), { page: 419, offset: 1 });
   assert.deepEqual(parseReadingLocation('{"page":-3,"offset":-1}'), { page: 1, offset: 0 });
   for (const offset of ["0.5", null, {}, []]) assert.equal(parseReadingLocation(JSON.stringify({ page: 2, offset })).offset, 0);

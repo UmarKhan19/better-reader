@@ -43,10 +43,6 @@ export function parseReadingLocation(raw: string | null, total = Number.MAX_SAFE
   return { page: clampPage(value?.page ?? 1, total), offset: value?.offset ?? 0 };
 }
 
-export function parseProgress(raw: string | null, total = Number.MAX_SAFE_INTEGER) {
-  return parseReadingLocation(raw, total).page;
-}
-
 export function readingProgress(location: ReadingLocation, total: number) {
   if (!Number.isSafeInteger(total) || total < 1) return 0;
   if (total === 1) return 100;
