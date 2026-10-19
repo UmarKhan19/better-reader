@@ -7,10 +7,10 @@ export type ReaderNavigationState = {
   history: ReadingLocation[];
 };
 export type ReaderNavigationAction =
-  | { type: "scroll"; location: ReadingLocation; total: number }
-  | { type: "jump"; location: ReadingLocation; total: number; remember?: boolean }
-  | { type: "restore"; total: number }
-  | { type: "back"; total: number };
+  | { type: "scroll"; location: ReadingLocation; pageCount: number }
+  | { type: "jump"; location: ReadingLocation; pageCount: number; remember?: boolean }
+  | { type: "restore"; pageCount: number }
+  | { type: "back"; pageCount: number };
 
 export function initialNavigation(location: ReadingLocation): ReaderNavigationState {
   return { location, navigation: { ...location, revision: 0 }, history: [] };
@@ -24,7 +24,7 @@ export function readerNavigationReducer(state: ReaderNavigationState, action: Re
   if (action.type === "back" && state.history.length === 0) return state;
   const requested = action.type === "back" ? state.history[state.history.length - 1]
     : action.type === "restore" ? state.location : action.location;
-  const location = { page: clampPage(requested.page, action.total), offset: clampOffset(requested.offset) };
+  const location = { page: clampPage(requested.page, action.pageCount), offset: clampOffset(requested.offset) };
   if (action.type === "scroll") {
     return sameLocation(location, state.location) ? state : { ...state, location };
   }

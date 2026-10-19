@@ -13,12 +13,12 @@ import styles from "./reader-chrome.module.css";
 import type { SidebarTab } from "./reader-ui-state";
 
 export function ReaderSidebar({
-  pdf, outline, total, current, tab, onTabChange, bookmarks, onNavigate, onToggleBookmark, searchPanel, pageColors,
+  pdf, outline, pageCount, current, tab, onTabChange, bookmarks, onNavigate, onToggleBookmark, searchPanel, pageColors,
 }: {
   pdf: PDFDocumentProxy;
   searchPanel: React.ReactNode;
   outline: OutlineEntry[] | null;
-  total: number;
+  pageCount: number;
   current: number;
   tab: SidebarTab;
   onTabChange: (tab: SidebarTab) => void;
@@ -69,7 +69,7 @@ export function ReaderSidebar({
           )}
       </Tabs.Panel>
       <Tabs.Panel value="pages" className={styles.tabPanel}>
-        {tab === "pages" && <ThumbnailList pdf={pdf} total={total} current={current} onNavigate={onNavigate} pageColors={pageColors} />}
+        {tab === "pages" && <ThumbnailList pdf={pdf} pageCount={pageCount} current={current} onNavigate={onNavigate} pageColors={pageColors} />}
       </Tabs.Panel>
       <Tabs.Panel value="search" className={styles.tabPanel}>
         {tab === "search" && <div className={styles.searchPanel} data-reader-search>{searchPanel}</div>}

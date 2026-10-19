@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { THUMBNAIL_ROW_HEIGHT, thumbnailWindow } from "./reader-thumbnails";
 
 test("thumbnail virtualization only mounts the viewport and a bounded buffer", () => {
-  for (const total of [1, 20, 419, 10000]) {
-    for (const top of [0, 500, 12000, Math.ceil(total / 2) * THUMBNAIL_ROW_HEIGHT - 700]) {
-      const result = thumbnailWindow(total, top, 700);
+  for (const pageCount of [1, 20, 419, 10000]) {
+    for (const top of [0, 500, 12000, Math.ceil(pageCount / 2) * THUMBNAIL_ROW_HEIGHT - 700]) {
+      const result = thumbnailWindow(pageCount, top, 700);
       assert.ok(result.start >= 0);
-      assert.ok(result.end <= Math.ceil(total / 2));
+      assert.ok(result.end <= Math.ceil(pageCount / 2));
       assert.ok(result.end >= result.start);
       assert.ok(result.end - result.start <= 9);
     }

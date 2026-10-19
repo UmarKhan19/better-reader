@@ -36,7 +36,7 @@ function ViewportDocument({ pdf, pageNumber, layout, viewMode, zoom, cropMargins
   const [statuses, setStatuses] = useState(new Map<number, { identity: string; busy: boolean; readable: boolean; ready: boolean }>());
   const [lowResource] = useState(() => typeof navigator !== "undefined" && lowResourceDevice());
   const active = clampPage(pageNumber, pdf.numPages);
-  const geometry = useMemo(() => readerGeometry({ total: pdf.numPages, active, layout, available, mode: viewMode, zoom,
+  const geometry = useMemo(() => readerGeometry({ pageCount: pdf.numPages, active, layout, available, mode: viewMode, zoom,
     sizes, crops: cropMargins ? crops : NO_CROPS }), [pdf.numPages, active, layout, available, viewMode, zoom, sizes, cropMargins, crops]);
 
   const scroll = useReaderScrollPlacement({

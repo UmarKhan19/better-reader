@@ -6,7 +6,7 @@ import { PAGE_PIXEL_LIMIT, SHOWN_PIXEL_BUDGET } from "./reader-raster-budget";
 import { MAX_TILES, TILE_PIXEL_BUDGET, visibleTiles } from "./reader-tiles";
 
 function panoramic(width: number, height: number, zoom = 1, custom = false) {
-  return readerGeometry({ total: 419, active: 1, layout: "continuous", available: { width, height },
+  return readerGeometry({ pageCount: 419, active: 1, layout: "continuous", available: { width, height },
     mode: custom ? "custom" : "fit-width", zoom,
     sizes: new Map([[1, { width: 3000, height: 90 }]]), crops: new Map() });
 }

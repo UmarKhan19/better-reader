@@ -5,9 +5,9 @@ export function progressStorageKey(id: string) {
   return `better-reader:progress:${id}`;
 }
 
-export function clampPage(page: number, total: number, fallback = 1) {
+export function clampPage(page: number, pageCount: number, fallback = 1) {
   if (!Number.isFinite(page)) return fallback;
-  return Math.max(1, Math.min(Math.max(1, total), Math.round(page)));
+  return Math.max(1, Math.min(Math.max(1, pageCount), Math.round(page)));
 }
 
 export function clampOffset(offset: number) {
@@ -38,15 +38,15 @@ export function parseSavedProgress(raw: string | null): SavedReadingProgress | n
   };
 }
 
-export function parseReadingLocation(raw: string | null, total = Number.MAX_SAFE_INTEGER): ReadingLocation {
+export function parseReadingLocation(raw: string | null, pageCount = Number.MAX_SAFE_INTEGER): ReadingLocation {
   const value = parseSavedProgress(raw);
-  return { page: clampPage(value?.page ?? 1, total), offset: value?.offset ?? 0 };
+  return { page: clampPage(value?.page ?? 1, pageCount), offset: value?.offset ?? 0 };
 }
 
-export function readingProgress(location: ReadingLocation, total: number) {
-  if (!Number.isSafeInteger(total) || total < 1) return 0;
-  if (total === 1) return 100;
-  return Math.round(Math.min(1, (clampPage(location.page, total) - 1 + clampOffset(location.offset)) / (total - 1)) * 100);
+export function readingProgress(location: ReadingLocation, pageCount: number) {
+  if (!Number.isSafeInteger(pageCount) || pageCount < 1) return 0;
+  if (pageCount === 1) return 100;
+  return Math.round(Math.min(1, (clampPage(location.page, pageCount) - 1 + clampOffset(location.offset)) / (pageCount - 1)) * 100);
 }
 
 export function createProgressWriter(
@@ -69,9 +69,9 @@ export function createProgressWriter(
     }
   };
   return {
-    update(location: ReadingLocation, total: number) {
-      if (!Number.isInteger(total) || total < 1) return;
-      pending = { page: clampPage(location.page, total), offset: clampOffset(location.offset), numPages: total };
+    update(location: ReadingLocation, pageCount: number) {
+      if (!Number.isInteger(pageCount) || pageCount < 1) return;
+      pending = { page: clampPage(location.page, pageCount), offset: clampOffset(location.offset), numPages: pageCount };
       if (timer !== undefined) clock.clear(timer);
       timer = clock.set(flush, delay);
     },

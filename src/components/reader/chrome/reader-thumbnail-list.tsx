@@ -33,14 +33,14 @@ const Thumbnail = memo(function Thumbnail({
   );
 });
 
-export function ThumbnailList({ pdf, total, current, onNavigate, pageColors }: {
-  pdf: PDFDocumentProxy; total: number; current: number; onNavigate: (page: number) => void;
+export function ThumbnailList({ pdf, pageCount, current, onNavigate, pageColors }: {
+  pdf: PDFDocumentProxy; pageCount: number; current: number; onNavigate: (page: number) => void;
   pageColors?: PdfPageColors;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ top: 0, height: 480 });
   const [focusPage, setFocusPage] = useState<number | null>(null);
-  const windowed = thumbnailWindow(total, viewport.top, viewport.height);
+  const windowed = thumbnailWindow(pageCount, viewport.top, viewport.height);
 
   useEffect(() => {
     const node = ref.current;
@@ -70,10 +70,10 @@ export function ThumbnailList({ pdf, total, current, onNavigate, pageColors }: {
     let next = page;
     if (event.key in offsets) next += offsets[event.key];
     else if (event.key === "Home") next = 1;
-    else if (event.key === "End") next = total;
+    else if (event.key === "End") next = pageCount;
     else return;
     event.preventDefault();
-    next = Math.max(1, Math.min(total, next));
+    next = Math.max(1, Math.min(pageCount, next));
     const node = ref.current;
     if (!node) return;
     const top = Math.floor((next - 1) / 2) * THUMBNAIL_ROW_HEIGHT;
@@ -97,7 +97,7 @@ export function ThumbnailList({ pdf, total, current, onNavigate, pageColors }: {
           const row = windowed.start + index;
           return (
             <div key={row} className={styles.thumbnailRow} style={{ top: row * THUMBNAIL_ROW_HEIGHT }}>
-              {[row * 2 + 1, row * 2 + 2].filter((n) => n <= total).map((n) => (
+              {[row * 2 + 1, row * 2 + 2].filter((n) => n <= pageCount).map((n) => (
                 <Thumbnail key={n} pdf={pdf} page={n} current={n === current} onNavigate={onNavigate} onKeyDown={onThumbnailKey} pageColors={pageColors} />
               ))}
             </div>

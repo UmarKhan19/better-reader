@@ -52,7 +52,7 @@ export function useReaderWindow({
 
   const nextPage = adjacentWindowPage(geometry.pages, turn.direction, pdf.numPages);
   const prefetch = geometry.layout !== "continuous" && settled && !lowResource && nextPage !== null
-    ? readerGeometry({ total: pdf.numPages, active: nextPage, layout: geometry.layout, available, mode: viewMode, zoom, sizes,
+    ? readerGeometry({ pageCount: pdf.numPages, active: nextPage, layout: geometry.layout, available, mode: viewMode, zoom, sizes,
         crops: cropMargins ? crops : NO_CROPS }).pages.filter((box) => !numbers.includes(box.page)).slice(turn.direction < 0 ? -1 : 0, turn.direction < 0 ? undefined : 1)
     : [];
   const renderPlan = planReaderWindow([...targetBoxes, ...prefetch], { top: view.top, left: view.left, width: view.width, height: view.height }, active, deviceRatio, lowResource, prefetch.map((box) => box.page))

@@ -4,7 +4,7 @@ import { adjacentWindowPage, effectiveLayout, FULL_PAGE, fraction, locationAt, l
 import type { Size } from "./reader-geometry";
 
 function geometry(overrides: Partial<Parameters<typeof readerGeometry>[0]> = {}) {
-  return readerGeometry({ total: 419, active: 1, layout: "continuous", available: { width: 1000, height: 800 },
+  return readerGeometry({ pageCount: 419, active: 1, layout: "continuous", available: { width: 1000, height: 800 },
     mode: "fit-width", zoom: 1, sizes: new Map(), crops: new Map(), ...overrides });
 }
 

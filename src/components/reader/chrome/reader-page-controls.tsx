@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import styles from "./reader-chrome.module.css";
 
 export type PageControlsProps = {
-  page: number; total: number | null; onNavigate: (page: number) => void; onSeek?: (page: number) => void;
+  page: number; pageCount: number | null; onNavigate: (page: number) => void; onSeek?: (page: number) => void;
   disabled?: boolean; onMessage?: (message: string) => void;
 };
 
-export function PageControls({ page, total, onNavigate, onSeek = onNavigate, disabled = false, onMessage }: PageControlsProps) {
+export function PageControls({ page, pageCount, onNavigate, onSeek = onNavigate, disabled = false, onMessage }: PageControlsProps) {
   const [invalid, setInvalid] = useState(false);
-  const last = total ?? null;
+  const last = pageCount ?? null;
   const hint = last ? `Enter a page number between 1 and ${last}, then press Enter.` : "Enter a page number and press Enter.";
   const report = (raw: string, input: HTMLInputElement) => {
     const digits = raw.trim();
@@ -52,7 +52,7 @@ export function PageControls({ page, total, onNavigate, onSeek = onNavigate, dis
           onKeyDown={(event) => {
             if (event.key === "Escape") { setInvalid(false); event.currentTarget.value = String(page); event.currentTarget.blur(); }
           }} />
-        <span className={styles.pageTotal}>/ {total ?? "…"}</span>
+        <span className={styles.pageTotal}>/ {pageCount ?? "…"}</span>
       </form>
       <Button variant="ghost" size="icon-touch" aria-label="Next page" title="Next page (→)"
         disabled={disabled || !last || page >= last} onClick={() => onNavigate(page + 1)}><ChevronRight /></Button>

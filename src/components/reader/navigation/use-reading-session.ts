@@ -8,7 +8,7 @@ import { markReader, READER_MARKS } from "../viewport/reader-performance";
 import { initialNavigation, readerNavigationReducer } from "./reader-navigation";
 
 /** One keyed book lifetime owns navigation and persisted state, including hidden-page flushes. */
-export function useReadingSession(id: string, total: number | null) {
+export function useReadingSession(id: string, pageCount: number | null) {
   const [reading, dispatch] = useReducer(readerNavigationReducer, id,
     (bookId) => initialNavigation(parseReadingLocation(readStorage(progressStorageKey(bookId)))));
   const [preferences, setPreferences] = useState(() => parsePreferences(readStorage(storageKey("settings", id))));
@@ -18,8 +18,8 @@ export function useReadingSession(id: string, total: number | null) {
   useEffect(() => { writeStorage(storageKey("bookmarks", id), bookmarks); }, [id, bookmarks]);
   const progressWriter = useMemo(() => createProgressWriter((value) => writeStorage(progressStorageKey(id), value)), [id]);
   useEffect(() => {
-    if (total) progressWriter.update(reading.location, total);
-  }, [progressWriter, reading.location, total]);
+    if (pageCount) progressWriter.update(reading.location, pageCount);
+  }, [progressWriter, reading.location, pageCount]);
   useEffect(() => {
     const flushHidden = () => { if (document.visibilityState === "hidden") progressWriter.flush(); };
     window.addEventListener("pagehide", progressWriter.flush);
@@ -32,31 +32,31 @@ export function useReadingSession(id: string, total: number | null) {
   }, [progressWriter]);
 
   const requestNavigation = useCallback((page: number, remember = false) => {
-    if (!total || !Number.isFinite(page)) return;
-    const next = clampPage(page, total);
+    if (!pageCount || !Number.isFinite(page)) return;
+    const next = clampPage(page, pageCount);
     markReader(READER_MARKS.pageRequest, { page: next });
-    dispatch({ type: "jump", location: { page: next, offset: 0 }, total, remember });
-  }, [total]);
+    dispatch({ type: "jump", location: { page: next, offset: 0 }, pageCount, remember });
+  }, [pageCount]);
   const navigate = useCallback((page: number) => requestNavigation(page), [requestNavigation]);
   const jump = useCallback((page: number) => requestNavigation(page, true), [requestNavigation]);
   const goBack = useCallback(() => {
-    if (!total) return;
+    if (!pageCount) return;
     markReader(READER_MARKS.pageRequest);
-    dispatch({ type: "back", total });
-  }, [total]);
+    dispatch({ type: "back", pageCount });
+  }, [pageCount]);
   const observeLocation = useCallback((location: ReadingLocation) => {
-    if (total) dispatch({ type: "scroll", location, total });
-  }, [total]);
-  const restore = useCallback((loadedTotal: number) => {
-    dispatch({ type: "restore", total: loadedTotal });
-    setBookmarks((pages) => pages.filter((page) => page <= loadedTotal));
+    if (pageCount) dispatch({ type: "scroll", location, pageCount });
+  }, [pageCount]);
+  const restore = useCallback((loadedPageCount: number) => {
+    dispatch({ type: "restore", pageCount: loadedPageCount });
+    setBookmarks((pages) => pages.filter((page) => page <= loadedPageCount));
   }, []);
   const toggleBookmark = useCallback((page: number) => {
-    if (!total) return;
-    const value = clampPage(page, total);
+    if (!pageCount) return;
+    const value = clampPage(page, pageCount);
     setBookmarks((previous) => previous.includes(value)
       ? previous.filter((n) => n !== value) : [...previous, value].sort((a, b) => a - b));
-  }, [total]);
+  }, [pageCount]);
   const updatePreferences = useCallback((update: Partial<ReaderPreferences>) => {
     setPreferences((previous) => ({ ...previous, ...update }));
   }, []);
@@ -66,9 +66,9 @@ export function useReadingSession(id: string, total: number | null) {
   }, []);
   const save = useCallback(() => {
     const saved = [writeStorage(storageKey("settings", id), preferences), writeStorage(storageKey("bookmarks", id), bookmarks)];
-    if (total) saved.push(writeStorage(progressStorageKey(id), { ...reading.location, numPages: total }));
+    if (pageCount) saved.push(writeStorage(progressStorageKey(id), { ...reading.location, numPages: pageCount }));
     return saved.every(Boolean);
-  }, [id, preferences, bookmarks, total, reading.location]);
+  }, [id, preferences, bookmarks, pageCount, reading.location]);
 
   return { reading, preferences, bookmarks, navigate, jump, goBack, observeLocation, restore,
     toggleBookmark, updatePreferences, zoomBy, save };

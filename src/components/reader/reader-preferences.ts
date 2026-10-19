@@ -3,7 +3,7 @@ export type PaperMode = "original" | "dimmed" | "sepia" | "dark";
 export type PdfPageColors = { background: string; foreground: string } | null;
 export type ReaderLayout = "continuous" | "single" | "spread";
 export type ReaderPreferences = {
-  viewMode: ViewMode;
+  viewMode: ViewMode; // page sizing (fit-width/fit-page/actual-size/custom); layout separately owns continuous/single/spread. Saved key stays "viewMode".
   zoom: number;
   paper: PaperMode;
   layout: ReaderLayout;
@@ -46,10 +46,10 @@ export function parsePreferences(raw: string | null): ReaderPreferences {
   };
 }
 
-export function parseBookmarks(raw: string | null, total = Number.MAX_SAFE_INTEGER): number[] {
+export function parseBookmarks(raw: string | null, pageCount = Number.MAX_SAFE_INTEGER): number[] {
   const value = parse(raw);
   if (!Array.isArray(value)) return [];
   return [...new Set(value.filter((n): n is number =>
-    typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= total,
+    typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= pageCount,
   ))].sort((a, b) => a - b);
 }

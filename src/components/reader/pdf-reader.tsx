@@ -52,11 +52,11 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLElement>(null);
   const { pdf, attempt, loadError, firstPageReady, setFirstPageReady, onDocumentLoad: setDocument, onLoadError, retry } = usePdfDocument();
-  const total = pdf?.numPages ?? null;
+  const pageCount = pdf?.numPages ?? null;
   const {
     reading, preferences, bookmarks, navigate, jump, goBack: back, observeLocation: onLocationChange,
     restore, toggleBookmark, updatePreferences, zoomBy: changeZoom, save,
-  } = useReadingSession(id, total);
+  } = useReadingSession(id, pageCount);
   const pageNumber = reading.location.page;
   const available = useViewerSize(viewerRef, pdf);
   const [effectiveScale, setEffectiveScale] = useState(1);
@@ -78,7 +78,7 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
   const outline = useReaderOutline(pdf, firstPageReady);
   const search = useReaderSearch(pdf, query, firstPageReady && sidebarOpen && sidebarTab === "search");
   const chapter = activeChapter(outline, pageNumber);
-  const progress = total ? readingProgress(reading.location, total) : 0;
+  const progress = pageCount ? readingProgress(reading.location, pageCount) : 0;
   const bookmarked = bookmarks.includes(pageNumber);
 
   // react-pdf's internal-link viewer retains its initial onItemClick callback.
@@ -88,10 +88,10 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
     if (pageNumber) latestJump.current(pageNumber);
   }, []);
   const goBack = useCallback(() => {
-    if (!total) return;
+    if (!pageCount) return;
     back();
     if (!desktop) closeSidebar();
-  }, [total, desktop, back, closeSidebar]);
+  }, [pageCount, desktop, back, closeSidebar]);
   const onReady = useCallback(() => setFirstPageReady(true), [setFirstPageReady]);
 
   const sidebarNavigate = useCallback((page: number) => {
@@ -142,10 +142,10 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
     setDocument(document);
   }, [restore, setDocument]);
 
-  const pageControls = { page: pageNumber, total, onNavigate: navigate, onSeek: jump, onMessage: showFeedback };
+  const pageControls = { page: pageNumber, pageCount, onNavigate: navigate, onSeek: jump, onMessage: showFeedback };
   const toggleCurrentBookmark = () => toggleBookmark(pageNumber);
 
-  const sidebar = total && pdf ? <ReaderSidebar pdf={pdf} outline={outline} total={total} current={pageNumber}
+  const sidebar = pageCount && pdf ? <ReaderSidebar pdf={pdf} outline={outline} pageCount={pageCount} current={pageNumber}
     tab={sidebarTab} onTabChange={selectSidebarTab} bookmarks={bookmarks}
     pageColors={pageColors}
     onNavigate={sidebarNavigate} onToggleBookmark={toggleBookmark}
@@ -166,7 +166,7 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
       }}>
       <ReaderHeader
         title={title}
-        chapterTitle={chapter?.title ?? (total ? `${total} pages` : "PDF reader")}
+        chapterTitle={chapter?.title ?? (pageCount ? `${pageCount} pages` : "PDF reader")}
         pageControls={pageControls}
         sidebarOpen={sidebarOpen}
         searchExpanded={sidebarOpen && sidebarTab === "search"}
@@ -266,7 +266,7 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
         storageBlocked={storageBlocked}
       />
       <ReaderDialog open={panel === "shortcuts"} title="Keyboard shortcuts" onClose={closePanel}><KeyboardShortcuts /></ReaderDialog>
-      <div className="sr-only" role="status" aria-live="polite">Page {pageNumber}{total ? ` of ${total}` : ""}. {bookmarked ? "Bookmarked." : ""}</div>
+      <div className="sr-only" role="status" aria-live="polite">Page {pageNumber}{pageCount ? ` of ${pageCount}` : ""}. {bookmarked ? "Bookmarked." : ""}</div>
     </div>
   );
 }

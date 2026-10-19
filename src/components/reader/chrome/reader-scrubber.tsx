@@ -24,12 +24,12 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
   const session = useRef<ScrubSession>({ active: false, draft: page });
   const [draft, setDraft] = useState<number | null>(null);
   const [preview, setPreview] = useState<number | null>(null);
-  const total = pdf.numPages;
+  const pageCount = pdf.numPages;
   const shown = draft ?? page;
-  const seekProgress = readingProgress({ page: shown, offset: 0 }, total);
+  const seekProgress = readingProgress({ page: shown, offset: 0 }, pageCount);
   const shownProgress = draft === null ? progress : seekProgress;
   const chapter = activeChapter(outline, shown)?.title ?? null;
-  const markers = useMemo(() => chapterMarkers(outline, total), [outline, total]);
+  const markers = useMemo(() => chapterMarkers(outline, pageCount), [outline, pageCount]);
 
   useEffect(() => {
     if (draft === null || hidden) return;
@@ -39,7 +39,7 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
 
   function start() {
     if (!session.current.active) {
-      session.current = beginScrub(page, total);
+      session.current = beginScrub(page, pageCount);
       setDraft(session.current.draft);
     }
   }
@@ -58,13 +58,13 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
       <div className={styles.rail} aria-hidden="true"><span style={{ transform: `scaleX(${seekProgress / 100})` }} /></div>
       <div className={styles.markers} aria-hidden="true">{markers.map((marker) =>
         <i key={marker.page} style={{ insetInlineStart: `${marker.fraction * 100}%` }} />)}</div>
-      <input type="range" min={1} max={total} step={1} value={shown} aria-label="Seek to page"
-        aria-valuetext={`Page ${shown} of ${total}${chapter ? `, ${chapter}` : ""}`}
+      <input type="range" min={1} max={pageCount} step={1} value={shown} aria-label="Seek to page"
+        aria-valuetext={`Page ${shown} of ${pageCount}${chapter ? `, ${chapter}` : ""}`}
         onPointerDown={(event) => { start(); event.currentTarget.setPointerCapture(event.pointerId); }}
         onChange={(event) => {
           const next = Number(event.currentTarget.value);
           if (session.current.active) {
-            session.current = previewScrub(session.current, next, total);
+            session.current = previewScrub(session.current, next, pageCount);
             setDraft(session.current.draft);
           } else onCommit(next);
         }}
@@ -78,7 +78,7 @@ export function ReaderScrubber({ pdf, page, progress, outline, onCommit, hidden,
         onBlur={() => { if (session.current.active) finish(false); }} />
     </div>
     <output className={styles.position} aria-label="Reading position">
-      <span className={styles.pageCount}>Page {shown}<span> / {total}</span></span>
+      <span className={styles.pageCount}>Page {shown}<span> / {pageCount}</span></span>
       <span className={styles.percent}>{shownProgress}%</span>
     </output>
     {draft !== null && <div className={styles.preview} aria-hidden="true">
