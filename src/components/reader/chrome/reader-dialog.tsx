@@ -35,7 +35,7 @@ export function ReaderDialog({ open, title, onClose, children, navigation = fals
       }}>
       <div className={styles.dialogHeading}>
         <h2 id={id}>{title}</h2>
-        <Button variant="ghost" size="icon-touch" onClick={onClose} aria-label={`Close ${title.toLowerCase()}`}><X /></Button>
+        <Button variant="ghost" size="icon-touch" shape="pill" onClick={onClose} aria-label={`Close ${title.toLowerCase()}`}><X /></Button>
       </div>
       <div className={styles.dialogBody}>{children}</div>
     </dialog>

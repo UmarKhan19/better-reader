@@ -41,7 +41,7 @@ export const LibraryCard = memo(function LibraryCard({
     : undefined;
 
   return (
-    <div className="group relative aspect-[2/3] overflow-hidden rounded-md bg-neutral-200 ring-1 ring-neutral-900/10 transition duration-300 ease-out hover:z-10 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/25 hover:ring-neutral-900/20 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-brand motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:bg-neutral-900 dark:ring-white/10 dark:hover:ring-white/25">
+    <div className="group relative aspect-poster overflow-hidden rounded-md bg-library-surface ring-1 ring-ink/10 transition duration-300 ease-out hover:z-10 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/25 hover:ring-ink/20 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-brand motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:ring-white/10 dark:hover:ring-white/25">
       <Link
         href={`/read/${item.id}`}
         prefetch={false}
@@ -60,13 +60,13 @@ export const LibraryCard = memo(function LibraryCard({
             unoptimized
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-poster-hover motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             onError={() => onCoverError(item.id)}
           />
         ) : (
           <PosterArtwork
             title={name}
-            className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-[1.06] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-poster-hover motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         )}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/55 to-transparent px-3 pt-10 pb-2.5">
@@ -86,7 +86,7 @@ export const LibraryCard = memo(function LibraryCard({
                 {progress.numPages > 0 && <span className="shrink-0 tabular-nums">{progressPercent(progress)}%</span>}
               </div>
               {progress.numPages > 0 && (
-                <div className="mt-1.5 h-[3px] overflow-hidden rounded-full bg-white/25">
+                <div className="mt-1.5 h-0.75 overflow-hidden rounded-full bg-white/25">
                   <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercent(progress)}%` }} />
                 </div>
               )}

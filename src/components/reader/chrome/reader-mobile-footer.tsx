@@ -19,10 +19,10 @@ export function ReaderMobileFooter(props: ReaderMobileFooterProps) {
   const { sidebarOpen, onToggleSidebar, ready, pageControls, bookmarked, onToggleBookmark, chromeVisible } = props;
   return (
     <nav className={styles.mobileFooter} aria-label="Page navigation" data-reader-chrome inert={!chromeVisible}>
-      <Button variant="ghost" size="icon-touch" aria-label="Toggle document navigation" aria-expanded={sidebarOpen}
+      <Button variant="ghost" size="icon-touch" shape="pill" aria-label="Toggle document navigation" aria-expanded={sidebarOpen}
         disabled={!ready} onClick={onToggleSidebar}><PanelLeft /></Button>
       <PageControls {...pageControls} />
-      <Button variant="ghost" size="icon-touch" aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"}
+      <Button variant="ghost" size="icon-touch" shape="pill" aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"}
         aria-pressed={bookmarked} disabled={!ready} onClick={onToggleBookmark}>
         <Bookmark fill={bookmarked ? "currentColor" : "none"} /></Button>
     </nav>

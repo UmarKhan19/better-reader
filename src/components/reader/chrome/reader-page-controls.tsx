@@ -24,7 +24,7 @@ export function PageControls({ page, pageCount, onNavigate, onSeek = onNavigate,
   };
   return (
     <div className={styles.pageControls}>
-      <Button variant="ghost" size="icon-touch" aria-label="Previous page" title="Previous page (←)"
+      <Button variant="ghost" size="icon-touch" shape="pill" aria-label="Previous page" title="Previous page (←)"
         disabled={disabled || !last || page <= 1} onClick={() => onNavigate(page - 1)}><ChevronLeft /></Button>
       <form className={styles.pageJump} onSubmit={(event) => {
         event.preventDefault();
@@ -54,7 +54,7 @@ export function PageControls({ page, pageCount, onNavigate, onSeek = onNavigate,
           }} />
         <span className={styles.pageTotal}>/ {pageCount ?? "…"}</span>
       </form>
-      <Button variant="ghost" size="icon-touch" aria-label="Next page" title="Next page (→)"
+      <Button variant="ghost" size="icon-touch" shape="pill" aria-label="Next page" title="Next page (→)"
         disabled={disabled || !last || page >= last} onClick={() => onNavigate(page + 1)}><ChevronRight /></Button>
     </div>
   );

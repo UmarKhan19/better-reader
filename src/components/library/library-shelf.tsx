@@ -37,8 +37,8 @@ export function LibraryShelf({ cards }: { cards: LibraryCardProps[] }) {
     <section aria-labelledby="continue-reading-heading">
       <div className="mb-4 flex min-h-9 items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h2 id="continue-reading-heading" className={`${DISPLAY} text-2xl tracking-wider text-neutral-900 md:text-3xl dark:text-white`}>Continue reading</h2>
-          <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">{cards.length}</span>
+          <h2 id="continue-reading-heading" className={`${DISPLAY} text-2xl tracking-wider text-library-foreground md:text-3xl`}>Continue reading</h2>
+          <span className="text-xs tabular-nums text-library-subtle">{cards.length}</span>
         </div>
         {fade !== "none" && (
           <div className="flex gap-2">
@@ -46,7 +46,7 @@ export function LibraryShelf({ cards }: { cards: LibraryCardProps[] }) {
               type="button"
               onClick={() => scrollRow("left")}
               disabled={fade === "right"}
-              className={cn("grid h-9 w-9 place-items-center rounded-full border border-neutral-300 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-900 disabled:cursor-default disabled:opacity-30 dark:border-white/20 dark:text-neutral-300 dark:hover:border-white/40 dark:hover:text-white", FOCUS_RED)}
+              className={cn("grid h-9 w-9 place-items-center rounded-full border border-library-border text-library-muted transition-colors hover:border-muted-line hover:text-library-foreground disabled:cursor-default disabled:opacity-30 dark:border-white/20 dark:hover:border-white/40", FOCUS_RED)}
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -55,7 +55,7 @@ export function LibraryShelf({ cards }: { cards: LibraryCardProps[] }) {
               type="button"
               onClick={() => scrollRow("right")}
               disabled={fade === "left"}
-              className={cn("grid h-9 w-9 place-items-center rounded-full border border-neutral-300 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-900 disabled:cursor-default disabled:opacity-30 dark:border-white/20 dark:text-neutral-300 dark:hover:border-white/40 dark:hover:text-white", FOCUS_RED)}
+              className={cn("grid h-9 w-9 place-items-center rounded-full border border-library-border text-library-muted transition-colors hover:border-muted-line hover:text-library-foreground disabled:cursor-default disabled:opacity-30 dark:border-white/20 dark:hover:border-white/40", FOCUS_RED)}
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" aria-hidden="true" />

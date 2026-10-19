@@ -47,7 +47,7 @@ test("upload tile preserves busy progress and drop-target feedback", () => {
   const busy = grid({ uploading: true, uploadProgress: 67 });
   assert.match(busy, /disabled=""[^>]*aria-busy="true" aria-label="Upload PDFs"/);
   assert.match(busy, /Uploading 67%/);
-  assert.match(busy, /width:67%/);
+  assert.match(busy, /transform:scaleX\(0\.67\)/);
   assert.match(grid({ dragOver: true }), /Drop to upload/);
 });
 

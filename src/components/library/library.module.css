@@ -2,12 +2,40 @@
   .bk-poster-art {
     container-type: inline-size;
   }
+  .bk-poster-art[data-palette="forest"] { background: var(--poster-forest); color: var(--poster-forest-ink); }
+  .bk-poster-art[data-palette="mauve"] { background: var(--poster-mauve); color: var(--poster-mauve-ink); }
+  .bk-poster-art[data-palette="rust"] { background: var(--poster-rust); color: var(--poster-rust-ink); }
+  .bk-poster-art[data-palette="slate"] { background: var(--poster-slate); color: var(--poster-slate-ink); }
+  .bk-poster-art[data-palette="ochre"] { background: var(--poster-ochre); color: var(--poster-ochre-ink); }
+  /* Illustration geometry belongs to the artwork, not the app's spacing scale. */
+  .bk-poster-frame { position: absolute; inset: 6%; border: 1px solid currentColor; opacity: 0.2; }
+  .bk-poster-orbit { position: absolute; right: -14%; bottom: 11%; width: 86%; aspect-ratio: 1; border: 1px solid currentColor; border-radius: 50%; opacity: 0.25; }
+  .bk-poster-arch { position: absolute; right: 12%; bottom: 11%; width: 40%; height: 42%; border-radius: 999px 999px 0 0; background: currentColor; opacity: 0.1; }
+  .bk-poster-plane { position: absolute; right: 12%; bottom: 11%; width: 64%; height: 40%; transform: skewX(-12deg); border: 1px solid currentColor; opacity: 0.25; }
+  .bk-poster-rule { position: absolute; top: 11%; left: 12%; width: 18%; height: 1px; background: currentColor; opacity: 0.7; }
+  .bk-poster-rule-bottom { top: auto; bottom: 7%; opacity: 0.5; }
   .bk-poster-title {
+    position: absolute;
+    inset-inline: 12%;
+    top: 16%;
     font-size: clamp(0.75rem, 11cqw, 2.25rem);
+    line-height: var(--leading-display);
+    letter-spacing: 0.015em;
   }
   .bk-poster-mark {
+    position: absolute;
+    bottom: 12%;
+    left: 10%;
     font-size: 66cqw;
+    line-height: 0.8;
+    letter-spacing: -0.03em;
+    user-select: none;
+    opacity: 0.7;
   }
+  .bk-empty-floor { inset-inline: 8%; }
+  .bk-empty-left { left: 13%; width: 28%; rotate: -11deg; }
+  .bk-empty-right { right: 13%; width: 28%; rotate: 11deg; }
+  .bk-empty-front { width: 31%; }
   .bk-hero-jacket {
     transform: rotate(5deg);
     box-shadow: 14px 24px 40px -12px rgb(0 0 0 / 35%);
@@ -23,17 +51,18 @@
   }
   .bk-hero-scrim {
     pointer-events: none;
-    background: linear-gradient(to top, #fafafa 0%, rgb(250 250 250 / 97%) 35%, rgb(250 250 250 / 70%) 100%);
+    background: linear-gradient(to top, var(--library-background) 0%, color-mix(in srgb, var(--library-background) 97%, transparent) 35%, color-mix(in srgb, var(--library-background) 70%, transparent) 100%);
   }
   :global(.dark) .bk-hero-scrim {
-    background: linear-gradient(to top, #141414 0%, rgb(20 20 20 / 95%) 35%, rgb(20 20 20 / 45%) 100%);
+    background: linear-gradient(to top, var(--library-background) 0%, color-mix(in srgb, var(--library-background) 95%, transparent) 35%, color-mix(in srgb, var(--library-background) 45%, transparent) 100%);
   }
   @media (min-width: 768px) {
+    .bk-hero-layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); }
     .bk-hero-scrim {
-      background: linear-gradient(to right, #fafafa 0%, rgb(250 250 250 / 96%) 35%, rgb(250 250 250 / 58%) 100%);
+      background: linear-gradient(to right, var(--library-background) 0%, color-mix(in srgb, var(--library-background) 96%, transparent) 35%, color-mix(in srgb, var(--library-background) 58%, transparent) 100%);
     }
     :global(.dark) .bk-hero-scrim {
-      background: linear-gradient(to right, #141414 0%, rgb(20 20 20 / 94%) 35%, rgb(20 20 20 / 42%) 100%);
+      background: linear-gradient(to right, var(--library-background) 0%, color-mix(in srgb, var(--library-background) 94%, transparent) 35%, color-mix(in srgb, var(--library-background) 42%, transparent) 100%);
     }
   }
   /* The one authored entrance: the hero walks on like a title card. */
@@ -50,6 +79,9 @@
   .bk-rise {
     animation: bk-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+  .bk-rise-meta { animation-delay: 90ms; }
+  .bk-rise-progress { animation-delay: 150ms; }
+  .bk-rise-actions { animation-delay: 210ms; }
   @media (prefers-reduced-motion: reduce) {
     .bk-rise {
       animation: none;

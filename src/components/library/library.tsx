@@ -63,7 +63,7 @@ export function Library() {
 
   return (
     <div
-      className="min-h-screen overflow-x-hidden bg-neutral-50 text-neutral-900 dark:bg-[#141414] dark:text-white"
+      className="min-h-screen overflow-x-hidden bg-library-background text-library-foreground"
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
@@ -81,7 +81,7 @@ export function Library() {
     >
       <a
         href="#library"
-        className={cn("fixed top-3 left-4 z-50 -translate-y-24 rounded-md bg-neutral-900 px-4 py-3 text-sm font-medium text-white focus-visible:translate-y-0 dark:bg-white dark:text-neutral-900", FOCUS_RED)}
+        className={cn("fixed top-3 left-4 z-50 -translate-y-24 rounded-md bg-library-foreground px-4 py-3 text-sm font-medium text-white focus-visible:translate-y-0 dark:text-ink", FOCUS_RED)}
       >
         Skip to library
       </a>
@@ -128,7 +128,7 @@ export function Library() {
           />
         </div>
         {items.length > 0 && (
-          <footer className="border-t border-neutral-200 px-4 py-8 text-xs text-neutral-600 md:px-12 lg:px-16 dark:border-white/5 dark:text-neutral-400">
+          <footer className="border-t border-library-divider px-4 py-8 text-xs text-library-caption md:px-12 lg:px-16">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="tabular-nums">
                 {items.length} {items.length === 1 ? "title" : "titles"} · {formatBytes(totalBytes)}
@@ -140,7 +140,7 @@ export function Library() {
       </main>
       {dragOver && (
         <div className="pointer-events-none fixed inset-0 z-50 p-3 sm:p-6" aria-hidden="true">
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-brand/80 bg-neutral-950/80 backdrop-blur-sm">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-brand/80 bg-overlay/80 backdrop-blur-sm">
             <Upload className="h-8 w-8 text-brand" aria-hidden="true" />
             <p className={`${DISPLAY} text-3xl tracking-wider text-white md:text-4xl`}>Drop to upload</p>
             <p className="text-sm text-white/60">PDFs stay on this device</p>

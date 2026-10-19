@@ -28,20 +28,20 @@ export function LibraryGrid({
       {total > 0 && (
         <div className="mb-4 flex min-h-9 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <h2 className={`${DISPLAY} text-2xl tracking-wider text-neutral-900 md:text-3xl dark:text-white`}>{query ? "Search results" : "Your library"}</h2>
-            <span className="text-xs tabular-nums text-neutral-500 dark:text-neutral-400">{query ? `${cards.length} of ${total}` : total}</span>
+            <h2 className={`${DISPLAY} text-2xl tracking-wider text-library-foreground md:text-3xl`}>{query ? "Search results" : "Your library"}</h2>
+            <span className="text-xs tabular-nums text-library-subtle">{query ? `${cards.length} of ${total}` : total}</span>
           </div>
           <div className="relative">
             <select
               value={sort}
               onChange={(event) => onSortChange(event.target.value as SortMode)}
               aria-label="Sort library"
-              className={cn("h-9 appearance-none rounded-full border border-neutral-300 bg-white/80 pr-9 pl-4 text-xs text-neutral-700 transition-colors hover:border-neutral-400 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:border-white/25", FOCUS_RED)}
+              className={cn("h-9 appearance-none rounded-full border border-library-border bg-library-field pr-9 pl-4 text-xs text-library-detail transition-colors hover:border-strong-line dark:hover:border-white/25", FOCUS_RED)}
             >
               <option value="recent">Recent</option>
               <option value="name">Name (A–Z)</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-library-subtle" aria-hidden="true" />
           </div>
         </div>
       )}
@@ -51,15 +51,15 @@ export function LibraryGrid({
           <p role="status" className="sr-only">Loading your library…</p>
           <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" aria-hidden="true">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="aspect-[2/3] animate-pulse rounded-md bg-neutral-200 dark:bg-neutral-900" />
+              <div key={index} className="aspect-poster animate-pulse rounded-md bg-library-surface" />
             ))}
           </div>
         </div>
       ) : total === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 py-24 text-center md:py-32">
           <EmptyPosterWall />
-          <h2 className={`${DISPLAY} text-4xl tracking-wider text-neutral-900 md:text-5xl dark:text-white`}>Your library is empty</h2>
-          <p className="max-w-md text-neutral-600 dark:text-neutral-400">
+          <h2 className={`${DISPLAY} text-4xl tracking-wider text-library-foreground md:text-5xl`}>Your library is empty</h2>
+          <p className="max-w-md text-library-caption">
             Drop PDFs anywhere on this page, or pick them from your device. They&rsquo;ll line up here as posters.
           </p>
           <button
@@ -86,8 +86,8 @@ export function LibraryGrid({
                   onClick={onUpload}
                   disabled={uploading}
                   className={cn(
-                    "relative flex aspect-[2/3] flex-col items-center justify-center gap-3 overflow-hidden rounded-md border border-dashed border-neutral-400 bg-neutral-100/50 text-neutral-600 transition-colors duration-200 hover:border-brand hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-progress",
-                    "dark:border-white/15 dark:bg-white/[0.03] dark:text-neutral-400 dark:hover:border-white/30 dark:hover:bg-white/[0.06] dark:hover:text-neutral-200",
+                    "relative flex aspect-poster flex-col items-center justify-center gap-3 overflow-hidden rounded-md border border-dashed border-library-upload-border bg-library-upload-surface text-library-caption transition-colors duration-200 hover:border-library-upload-border-hover hover:bg-library-upload-hover hover:text-library-foreground disabled:cursor-progress",
+                    "dark:hover:text-library-detail",
                     FOCUS_RED,
                     dragOver && "border-brand bg-brand/5 text-brand dark:border-brand dark:bg-brand/10 dark:text-brand",
                   )}
@@ -102,10 +102,10 @@ export function LibraryGrid({
                       ? uploadProgress !== null && uploadProgress > 0 ? `Uploading ${uploadProgress}%` : "Uploading…"
                       : dragOver ? "Drop to upload" : "Add PDFs"}
                   </span>
-                  {!uploading && <span className="-mt-1 px-2 text-center text-xs text-neutral-600 dark:text-neutral-400">or drop them here</span>}
+                  {!uploading && <span className="-mt-1 px-2 text-center text-xs text-library-caption">or drop them here</span>}
                   {uploading && (
-                    <span className="absolute inset-x-0 bottom-0 h-1 bg-neutral-900/10 dark:bg-white/10" aria-hidden="true">
-                      <span className="block h-full bg-brand transition-[width] duration-300" style={{ width: `${uploadProgress ?? 0}%` }} />
+                    <span className="absolute inset-x-0 bottom-0 h-1 bg-library-foreground/10" aria-hidden="true">
+                      <span className="block h-full w-full origin-left bg-brand transition-transform duration-300 motion-reduce:transition-none" style={{ transform: `scaleX(${(uploadProgress ?? 0) / 100})` }} />
                     </span>
                   )}
                 </button>
@@ -114,11 +114,11 @@ export function LibraryGrid({
             </div>
           )}
           {query && cards.length === 0 && (
-            <p className="flex min-h-64 flex-col items-center justify-center gap-3 py-12 text-center text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="flex min-h-64 flex-col items-center justify-center gap-3 py-12 text-center text-sm text-library-caption">
               No titles match &ldquo;{query}&rdquo;.{" "}
               <button
                 type="button"
-                className={cn("rounded px-1 text-neutral-900 underline underline-offset-4 dark:text-white", FOCUS_RED)}
+                className={cn("rounded px-1 text-library-foreground underline underline-offset-4", FOCUS_RED)}
                 onClick={onClearSearch}
               >
                 Clear search

@@ -34,15 +34,15 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
       className={cn(
         "sticky top-0 z-40 border-b transition-colors duration-300",
         scrolled
-          ? "border-neutral-200/80 bg-neutral-50/90 backdrop-blur-md dark:border-white/5 dark:bg-[#141414]/90"
-          : "border-transparent bg-gradient-to-b from-neutral-50/80 to-transparent dark:from-black/70 dark:to-transparent",
+          ? "border-soft-line/80 bg-library-background/90 backdrop-blur-md dark:border-white/5"
+          : "border-transparent bg-gradient-to-b from-library-background/80 to-transparent dark:from-black/70 dark:to-transparent",
       )}
     >
-      <div className="flex min-h-[4.5rem] items-center justify-between gap-2 px-4 py-3 md:px-12 lg:px-16">
-        <span className={`${DISPLAY} whitespace-nowrap text-lg tracking-wider text-brand min-[360px]:text-xl sm:text-2xl md:text-3xl dark:text-[#ff3440] sm:dark:text-brand`}>Better Reader</span>
+      <div className="flex min-h-18 items-center justify-between gap-2 px-4 py-3 md:px-12 lg:px-16">
+        <span className={`${DISPLAY} whitespace-nowrap text-lg tracking-wider text-brand min-[360px]:text-xl sm:text-2xl md:text-3xl dark:text-brand-readable sm:dark:text-brand`}>Better Reader</span>
         <div className="flex items-center gap-1 sm:gap-3">
           <div className="relative hidden lg:block">
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-library-subtle" aria-hidden="true" />
             <input
               ref={desktopSearchRef}
               type="search"
@@ -50,7 +50,7 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
               onChange={(event) => onFilterChange(event.target.value)}
               placeholder="Search titles…"
               aria-label="Filter PDFs by file name"
-              className={cn("h-10 w-64 rounded-full border border-neutral-300 bg-white/80 pr-10 pl-10 text-sm text-neutral-900 caret-brand transition-colors placeholder:text-neutral-500 focus:bg-white xl:w-72 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-neutral-400 dark:focus:bg-white/10", FOCUS_RED)}
+              className={cn("h-10 w-64 rounded-full border border-library-border bg-library-field pr-10 pl-10 text-sm text-library-foreground caret-brand transition-colors placeholder:text-library-subtle focus:bg-library-field-hover xl:w-72", FOCUS_RED)}
             />
             {filter && (
               <button
@@ -60,7 +60,7 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
                   desktopSearchRef.current?.focus();
                 }}
                 aria-label="Clear search"
-                className={cn("absolute top-1/2 right-1 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white", FOCUS_RED)}
+                className={cn("absolute top-1/2 right-1 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-library-subtle hover:text-library-foreground", FOCUS_RED)}
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -70,13 +70,12 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
             ref={searchToggleRef}
             type="button"
             onClick={() => setSearchOpen(true)}
-            className={cn("grid h-8 w-8 place-items-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-200/70 hover:text-neutral-900 min-[360px]:h-9 min-[360px]:w-9 lg:hidden dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white", FOCUS_RED)}
+            className={cn("grid h-8 w-8 place-items-center rounded-full text-library-detail transition-colors hover:bg-library-icon-hover hover:text-library-foreground min-[360px]:h-9 min-[360px]:w-9 lg:hidden dark:text-library-muted", FOCUS_RED)}
             aria-label="Search your library"
           >
             <Search className="h-5 w-5" />
           </button>
           <ThemeSelect
-            className="max-[400px]:[&_button]:h-8 max-[400px]:[&_button]:w-8"
             onStorageFailure={onThemeStorageFailure}
           />
           <button
@@ -97,8 +96,8 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
       </div>
       {/* Mobile search takes the whole bar so nothing squeezes. */}
       {searchOpen && (
-        <div className="absolute inset-0 z-20 flex items-center gap-2 bg-neutral-50 px-4 md:px-12 lg:hidden dark:bg-[#141414]">
-          <Search className="h-5 w-5 shrink-0 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
+        <div className="absolute inset-0 z-20 flex items-center gap-2 bg-library-background px-4 md:px-12 lg:hidden">
+          <Search className="h-5 w-5 shrink-0 text-library-subtle" aria-hidden="true" />
           <input
             type="search"
             value={filter}
@@ -108,13 +107,13 @@ export function LibraryHeader({ filter, onFilterChange, uploading, onUpload, onT
             }}
             placeholder="Search titles…"
             aria-label="Filter PDFs by file name"
-            className="h-10 min-w-0 flex-1 bg-transparent text-base text-neutral-900 caret-brand placeholder:text-neutral-500 focus:outline-none dark:text-white dark:placeholder:text-neutral-400"
+            className="h-10 min-w-0 flex-1 bg-transparent text-base text-library-foreground caret-brand placeholder:text-library-subtle focus:outline-none"
             autoFocus
           />
           <button
             type="button"
             onClick={closeSearch}
-            className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-600 transition-colors hover:bg-neutral-200/70 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white", FOCUS_RED)}
+            className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full text-library-muted transition-colors hover:bg-library-icon-hover hover:text-library-foreground", FOCUS_RED)}
             aria-label="Close search"
           >
             <X className="h-5 w-5" />

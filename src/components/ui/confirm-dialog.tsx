@@ -67,17 +67,17 @@ export function ConfirmDialog({
       ref={ref}
       aria-labelledby={id}
       aria-describedby={descriptionId}
-      className="m-auto w-[min(420px,calc(100%-32px))] rounded-2xl border border-zinc-200 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-black/40 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+      className="m-auto w-105 max-w-dialog rounded-2xl border border-border bg-popover p-0 text-popover-foreground shadow-2xl backdrop:bg-black/40"
       onClick={(event) => {
         if (event.target === event.currentTarget && !pending) onCancel();
       }}
     >
       <div className="p-5">
         <h2 id={id} className="text-base font-semibold">{title}</h2>
-        <div id={descriptionId} className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{description}</div>
-        {error && <p role="alert" className="mt-3 text-sm font-medium text-red-700 dark:text-red-400">{error}</p>}
+        <div id={descriptionId} className="mt-2 text-sm text-muted-foreground">{description}</div>
+        {error && <p role="alert" className="mt-3 text-sm font-medium text-destructive">{error}</p>}
       </div>
-      <div className="flex justify-end gap-2 border-t border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="flex justify-end gap-2 border-t border-border p-4">
         <Button variant="outline" size="touch" disabled={pending} onClick={onCancel}>{cancelLabel}</Button>
         <Button variant="destructive" size="touch" aria-busy={pending} disabled={pending} onClick={onConfirm}>
           {pending && <Loader2 className="animate-spin" />}

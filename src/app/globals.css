@@ -13,6 +13,44 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand-red);
   --color-brand-hover: var(--brand-red-hover);
+  --color-brand-readable: var(--brand-readable);
+  --color-library-background: var(--library-background);
+  --color-library-foreground: var(--library-foreground);
+  --color-library-muted: var(--library-muted);
+  --color-library-caption: var(--library-caption);
+  --color-library-subtle: var(--library-subtle);
+  --color-library-detail: var(--library-detail);
+  --color-library-surface: var(--library-surface);
+  --color-library-border: var(--library-border);
+  --color-library-divider: var(--library-divider);
+  --color-library-field: var(--library-field);
+  --color-library-field-hover: var(--library-field-hover);
+  --color-library-icon-hover: var(--library-icon-hover);
+  --color-library-primary-hover: var(--library-primary-hover);
+  --color-library-inverse: var(--library-inverse);
+  --color-library-upload-surface: var(--library-upload-surface);
+  --color-library-upload-hover: var(--library-upload-hover);
+  --color-library-upload-border: var(--library-upload-border);
+  --color-library-upload-border-hover: var(--library-upload-border-hover);
+  --color-ink: var(--color-neutral-900);
+  --color-soft-surface: var(--color-neutral-100);
+  --color-soft-line: var(--color-neutral-200);
+  --color-strong-line: var(--color-neutral-400);
+  --color-muted-line: var(--color-neutral-500);
+  --color-overlay: var(--color-neutral-950);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-border: var(--warning-border);
+  --color-error: var(--error);
+  --color-error-surface: var(--error-surface);
+  --color-error-border: var(--error-border);
+  --color-secondary-hover: color-mix(in oklch, var(--secondary), var(--foreground) 5%);
+  --color-reader-chrome: var(--reader-chrome);
+  --color-reader-field: var(--reader-field);
+  --color-reader-action-hover: color-mix(in srgb, var(--foreground) 85%, var(--reader-chrome));
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -35,6 +73,16 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --aspect-poster: 2 / 3;
+  --text-label: 0.6875rem;
+  --leading-display: 0.98;
+  --tracking-display: 0.02em;
+  --tracking-stamp: 0.18em;
+  --container-dialog: calc(100% - 2rem);
+}
+
+@utility scale-poster-hover {
+  scale: 106%;
 }
 
 :root {
@@ -59,6 +107,45 @@
   --radius: 0.625rem;
   --brand-red: #e50914;
   --brand-red-hover: #f40612;
+  --brand-readable: #ff3440;
+  /* The library keeps its poster-wall palette without changing reader surfaces. */
+  --library-background: var(--color-neutral-50);
+  --library-foreground: var(--color-neutral-900);
+  --library-muted: var(--color-neutral-600);
+  --library-caption: var(--color-neutral-600);
+  --library-subtle: var(--color-neutral-500);
+  --library-detail: var(--color-neutral-700);
+  --library-surface: var(--color-neutral-200);
+  --library-border: var(--color-neutral-300);
+  --library-divider: var(--color-neutral-200);
+  --library-field: rgb(255 255 255 / 80%);
+  --library-field-hover: #fff;
+  --library-icon-hover: color-mix(in srgb, var(--color-neutral-200) 70%, transparent);
+  --library-primary-hover: var(--color-neutral-800);
+  --library-inverse: #fff;
+  --library-upload-surface: color-mix(in srgb, var(--color-neutral-100) 50%, transparent);
+  --library-upload-hover: var(--color-neutral-100);
+  --library-upload-border: var(--color-neutral-400);
+  --library-upload-border-hover: var(--brand-red);
+  --success: var(--color-emerald-900);
+  --success-surface: var(--color-emerald-50);
+  --success-border: var(--color-emerald-600);
+  --warning: var(--color-amber-900);
+  --warning-surface: var(--color-amber-50);
+  --warning-border: var(--color-amber-600);
+  --error: var(--color-red-900);
+  --error-surface: var(--color-red-50);
+  --error-border: var(--color-red-600);
+  --poster-forest: #2b4940;
+  --poster-forest-ink: #e5e8ca;
+  --poster-mauve: #493b50;
+  --poster-mauve-ink: #efdfd2;
+  --poster-rust: #854735;
+  --poster-rust-ink: #f4dfbc;
+  --poster-slate: #2c455d;
+  --poster-slate-ink: #e0e7e5;
+  --poster-ochre: #6b5732;
+  --poster-ochre-ink: #f3e7c6;
   --scroll-thumb: oklch(0.8 0 0);
   --scroll-thumb-hover: oklch(0.62 0 0);
 }
@@ -84,6 +171,33 @@
   --ring: oklch(0.556 0 0);
   --scroll-thumb: oklch(0.33 0 0);
   --scroll-thumb-hover: oklch(0.46 0 0);
+  --library-background: #141414;
+  --library-foreground: #fff;
+  --library-muted: var(--color-neutral-300);
+  --library-caption: var(--color-neutral-400);
+  --library-subtle: var(--color-neutral-400);
+  --library-detail: var(--color-neutral-200);
+  --library-surface: var(--color-neutral-900);
+  --library-border: rgb(255 255 255 / 10%);
+  --library-divider: rgb(255 255 255 / 5%);
+  --library-field: rgb(255 255 255 / 5%);
+  --library-field-hover: rgb(255 255 255 / 10%);
+  --library-icon-hover: rgb(255 255 255 / 10%);
+  --library-primary-hover: var(--color-neutral-200);
+  --library-inverse: #000;
+  --library-upload-surface: rgb(255 255 255 / 3%);
+  --library-upload-hover: rgb(255 255 255 / 6%);
+  --library-upload-border: rgb(255 255 255 / 15%);
+  --library-upload-border-hover: rgb(255 255 255 / 30%);
+  --success: var(--color-emerald-100);
+  --success-surface: color-mix(in srgb, var(--color-emerald-950) 40%, transparent);
+  --success-border: var(--color-emerald-500);
+  --warning: var(--color-amber-100);
+  --warning-surface: color-mix(in srgb, var(--color-amber-950) 40%, transparent);
+  --warning-border: var(--color-amber-500);
+  --error: var(--color-red-100);
+  --error-surface: color-mix(in srgb, var(--color-red-950) 40%, transparent);
+  --error-border: var(--color-red-500);
 }
 
 @layer base {

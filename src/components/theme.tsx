@@ -36,7 +36,7 @@ export function ThemeSelect({
 }) {
   const { theme, setTheme } = useTheme();
   return (
-    <div className={cn("inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-white/5", className)}>
+    <div className={cn("inline-flex items-center gap-1 rounded-full border border-soft-line bg-white p-1 shadow-sm dark:border-white/10 dark:bg-white/5", className)}>
       {OPTIONS.map(({ value, label, Icon }) => (
         <button
           key={value}
@@ -50,11 +50,11 @@ export function ThemeSelect({
           aria-label={`Use ${label.toLowerCase()} theme`}
           title={label}
           className={cn(
-            "grid h-9 w-9 place-items-center rounded-full transition-colors sm:h-8 sm:w-8",
+            "grid h-9 w-9 place-items-center rounded-full transition-colors max-[400px]:h-8 max-[400px]:w-8 sm:h-8 sm:w-8",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
             theme === value
-              ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100",
+              ? "bg-ink text-white dark:bg-soft-surface dark:text-ink"
+              : "text-library-subtle hover:bg-soft-surface hover:text-ink dark:hover:bg-white/10 dark:hover:text-soft-surface",
           )}
         >
           <Icon className="h-4 w-4" />

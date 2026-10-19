@@ -207,7 +207,7 @@ export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
         error={<ReaderDocumentError loadError={loadError} onRetry={retry} />}>
         {sidebarOpen && desktop && <aside id="reader-sidebar" className={chromeStyles.sidebar} data-reader-sidebar>
           <div className={chromeStyles.sidebarHeading}><h2>Document navigation</h2>
-            <Button variant="ghost" size="icon-touch" aria-label="Close document navigation" onClick={closeSidebar}><X /></Button>
+            <Button variant="ghost" size="icon-touch" shape="pill" aria-label="Close document navigation" onClick={closeSidebar}><X /></Button>
           </div>{sidebar}
         </aside>}
         <main ref={viewerRef} className={styles.viewer} tabIndex={0} aria-label="PDF page viewer"

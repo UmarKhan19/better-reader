@@ -6,9 +6,9 @@ import type { LibraryNotice } from "./library-model";
 import { FOCUS_RED } from "./library-styles";
 
 const NOTICE_TONES: Record<LibraryNotice["tone"], string> = {
-  success: "border-emerald-600/25 bg-emerald-50 text-emerald-900 dark:border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-100",
-  warning: "border-amber-600/25 bg-amber-50 text-amber-900 dark:border-amber-500/25 dark:bg-amber-950/40 dark:text-amber-100",
-  error: "border-red-600/25 bg-red-50 text-red-900 dark:border-red-500/25 dark:bg-red-950/40 dark:text-red-100",
+  success: "border-success-border/25 bg-success-surface text-success",
+  warning: "border-warning-border/25 bg-warning-surface text-warning",
+  error: "border-error-border/25 bg-error-surface text-error",
 };
 const PANEL = "flex items-start gap-3 rounded-lg border p-4 text-sm";
 

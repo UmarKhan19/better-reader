@@ -42,13 +42,13 @@ export function ReaderHeader(props: ReaderHeaderProps) {
   return (
     <header className={styles.header} data-reader-chrome inert={!chromeVisible}>
       <div className={styles.titleGroup}>
-        <Button variant="ghost" size="touch" className={styles.libraryLink} aria-label="Back to library" title="Back to library"
+        <Button variant="ghost" size="reader-home" shape="pill" className="lg:me-3" aria-label="Back to library" title="Back to library"
           nativeButton={false} render={<Link href="/" />}>
           <ArrowLeft /><span className={styles.wordmark} aria-hidden="true">Better Reader</span>
           <span className={styles.compactWordmark} aria-hidden="true">BK</span>
         </Button>
         <div className={styles.desktopOnly}>
-          <Button variant="ghost" size="icon-touch" aria-label="Toggle document navigation" title="Document navigation (T)"
+          <Button variant="ghost" size="icon-touch" shape="pill" aria-label="Toggle document navigation" title="Document navigation (T)"
             aria-expanded={sidebarOpen} onClick={onToggleSidebar}><PanelLeft /></Button>
         </div>
         <div className={styles.titleText}>
@@ -60,18 +60,18 @@ export function ReaderHeader(props: ReaderHeaderProps) {
         <PageControls {...pageControls} />
       </div>
       <div className={styles.toolbarActions}>
-        <Button variant="ghost" size={coarsePointer ? "touch" : "icon-touch"} className={styles.historyAction}
+        <Button variant="ghost" size={coarsePointer ? "touch" : "icon-touch"} shape="pill" className="max-lg:data-[empty=true]:hidden"
           data-empty={!readingHistoryLength} aria-label="Back to previous location"
           title="Back to previous location" disabled={!readingHistoryLength} onClick={goBack}>
           <History />{coarsePointer && <span className={styles.backLabel}>Previous</span>}
         </Button>
-        <Button variant="ghost" size="touch" aria-label="Search document" title="Search document (/ or Ctrl+F)" aria-keyshortcuts="/ Control+f Meta+f"
+        <Button variant="ghost" size="touch" shape="pill" aria-label="Search document" title="Search document (/ or Ctrl+F)" aria-keyshortcuts="/ Control+f Meta+f"
           aria-expanded={searchExpanded} disabled={!ready} onClick={openSearch}>
           <Search />
           <span className={styles.actionLabel}>Search</span>
         </Button>
         <div className={cn(styles.wideOnly, styles.zoomToolbar)}>
-          <Button variant="ghost" size="icon-touch" aria-label="Zoom out" title="Zoom out (-)" disabled={!ready}
+          <Button variant="ghost" size="icon-touch" shape="pill" aria-label="Zoom out" title="Zoom out (-)" disabled={!ready}
             onClick={() => zoomBy(-0.1)}><ZoomOut /></Button>
           <label className="sr-only" htmlFor="reader-view-mode">Page sizing</label>
           <select id="reader-view-mode" className={styles.modeSelect} value={preferences.viewMode}
@@ -79,19 +79,19 @@ export function ReaderHeader(props: ReaderHeaderProps) {
             <option value="fit-width">Fit width</option><option value="fit-page">Fit page</option>
             <option value="actual-size">100%</option><option value="custom">Custom · {Math.round(preferences.zoom * 100)}%</option>
           </select>
-          <Button variant="ghost" size="icon-touch" aria-label="Zoom in" title="Zoom in (+)" disabled={!ready}
+          <Button variant="ghost" size="icon-touch" shape="pill" aria-label="Zoom in" title="Zoom in (+)" disabled={!ready}
             onClick={() => zoomBy(0.1)}><ZoomIn /></Button>
         </div>
         <div className={cn(styles.desktopOnly, styles.toolbarGroup)}>
-          <Button variant="ghost" size="icon-touch" aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"}
+          <Button variant="ghost" size="icon-touch" shape="pill" aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"}
             title={bookmarked ? "Remove bookmark (B)" : "Bookmark this page (B)"} aria-pressed={bookmarked}
             disabled={!ready} onClick={onToggleBookmark}><Bookmark fill={bookmarked ? "currentColor" : "none"} /></Button>
-          <Button variant="ghost" size={coarsePointer ? "touch" : "icon-touch"} aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"}
+          <Button variant="ghost" size={coarsePointer ? "touch" : "icon-touch"} shape="pill" aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"}
             title={focusMode ? "Exit focus mode (Z)" : "Focus mode (Z)"} aria-pressed={focusMode} onClick={toggleFocus}>
             <Focus />{coarsePointer && <span>Focus</span>}
           </Button>
         </div>
-        <Button variant="default" size="touch" className={styles.settingsButton} aria-label="Reading settings" title="Reading settings"
+        <Button variant="reader-settings" size="touch" shape="pill" className="lg:ms-1" aria-label="Reading settings" title="Reading settings"
           aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={onOpenSettings}>
           <Settings2 />
           <span className={styles.actionLabel}>Settings</span>
