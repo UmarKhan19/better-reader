@@ -164,13 +164,17 @@ Better Reader needs one long-running server process and a persistent, writable d
 | Part | Responsibility |
 | --- | --- |
 | `src/app/` | Next.js pages and PDF API routes |
-| `src/lib/server/pdf-store/` | JSON index, PDF and cover files, soft-delete and restore |
-| `src/lib/server/book-index/` | Local embedding worker, per-book indexes, and server-only evidence retrieval |
+| `src/lib/server/pdf-store/` | JSON index, PDF and cover files, soft-delete, restore and safe derived-index publication |
+| `src/lib/server/book-index/` | Local embedding worker, checked process protocol, per-book indexes and evidence retrieval |
+| `src/lib/server/http/` | Host guard, file streaming and HTTP range/validator behavior |
 | `src/instrumentation.ts` | Queues unfinished or missing indexes on server startup |
 | `src/components/library/` | Library data flow, upload, search, cards, covers, and feedback |
 | `src/components/reader/` | PDF.js reader, navigation state, virtualized rendering, search, and settings |
+| `src/lib/reading-progress.ts` | Shared saved-progress format, compatibility and delayed writes |
 | Browser `localStorage` | Theme and per-book progress, bookmarks, and preferences |
 
 The server serves original PDFs directly to PDF.js. The reader requests byte ranges as needed; it does not copy or rewrite a document to open it.
 
 Keep `src/lib/server/book-index/*.mjs` and installed dependencies alongside the production build. The worker runs those files directly with Node.js, outside Next.js bundling. Automated unit tests do not download models or launch automatic indexing workers.
+
+For code ownership, task-specific checks and refactoring constraints, see [docs/architecture.md](docs/architecture.md).

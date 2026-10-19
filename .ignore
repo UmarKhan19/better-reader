@@ -1,0 +1,9 @@
+# Normal source discovery. These files remain available through explicit reads.
+/node_modules/
+/.next/
+/.codegraph/
+/.impeccable/
+/data/
+/public/pdf.worker.min.mjs
+/bun.lock
+*.tsbuildinfo

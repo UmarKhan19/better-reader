@@ -16,13 +16,13 @@ Better Reader provides a personal PDF library and a reader that keeps a reader's
 
 ## Operating context
 
-The existing Next.js app stores uploaded documents locally and serves them through private HTTP endpoints. Reading happens in the browser with PDF.js. Original files must remain unchanged.
+The Next.js app stores uploaded documents on the server's disk and serves them through Host-guarded HTTP endpoints without authentication. Reading happens in the browser with PDF.js. Original files must remain unchanged.
 
 ## Capabilities and constraints
 
 - Continuous scrolling is the default reading layout, as chosen by the user. Page-by-page and desktop two-page spread remain optional, with per-book preferences.
 - Preserve existing progress and bookmarks, including legacy local-storage progress formats.
-- Keep the existing neutral interface rather than replacing its visual identity.
+- Preserve the poster-led library described in DESIGN.md and the quiet, document-first reader controls.
 - Provide optional blank-margin cropping, gesture zoom, search with highlighted results, location history, and chapter-aware page seeking.
 - Keep rendering and thumbnail memory bounded. Background work must not delay the visible page.
 - Performance claims require measurements. Local throttled-browser tests are not physical-device benchmarks.
