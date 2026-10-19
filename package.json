@@ -8,6 +8,7 @@
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint",
     "test": "bun test",
+    "test:coverage": "bun test --coverage",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "check": "bun run typecheck && bun run lint && bun test",
     "test:browser": "node scripts/test-reader.mjs",
