@@ -11,7 +11,7 @@ _A personal PDF library and browser reader that remembers your place._
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-3c873a?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-171%20passing-2ea44f?style=flat-square)](#checks)
+[![Tests](https://img.shields.io/badge/tests-186%20passing-2ea44f?style=flat-square)](#checks)
 
 [Features](#features) · [Getting started](#getting-started) · [Data and backups](#data-and-backups) · [Configuration](#configuration) · [Checks](#checks)
 
@@ -45,6 +45,17 @@ Better Reader is a self-hosted, single-user PDF library. Uploads stay on the ser
 - A shared render queue prioritizes visible pages over prefetch and thumbnails.
 - Raster memory is capped: 6 MP for shown base pages, 12 MP for physical base-page reservations, 3 MP per canvas, and up to 6 MP across six high-resolution tiles.
 - PDF responses support byte ranges, ETags, and conditional requests.
+
+### Background embeddings
+
+- Uploading or restoring a book queues server-side text extraction and local embeddings without waiting for them in the response. Existing books are checked on server startup.
+- One low-priority worker process handles one job at a time. MiniLM inference uses one CPU thread, not the Next.js request process.
+- Each book has its own 384-dimensional index. Passages target 150 words with 30-word overlap, stay within 256 model tokens, and retain the original PDF page number.
+- No chat UI or LLM calls are included. The server helper `searchBook(id, question)` in `src/lib/ai/index.ts` returns up to ten passages with page numbers and scores, using 80% cosine similarity and 20% whole-word keyword matching. Questions must fit within 256 tokens and 2,000 characters. Future LLM callers should pass only these results as evidence.
+
+The first text-bearing book downloads the quantized `Xenova/all-MiniLM-L6-v2` model from Hugging Face into `data/ai/models/`. Later inference uses that disk cache. Book text and questions never leave the server. Image-only pages have no extractable text; OCR is not included.
+
+Index files are published atomically, so a partial build is never searchable. Failed jobs are logged on the server and retried on the next server startup or book restore. A worker crash does not stop uploads or reading; subsequent jobs start a new worker. Missing, corrupt, or outdated indexes are rebuilt. Interrupted builds restart from the beginning of the book.
 
 ## Screenshots
 
@@ -94,10 +105,14 @@ By default, the app stores its library under `data/` in the project directory:
 | `data/uploads/` | Original PDFs, stored byte for byte |
 | `data/covers/` | Cover images |
 | `data/pdfs.json` | Library index |
+| `data/ai/<book-id>/index.json` | Derived text passages and embeddings for one book |
+| `data/ai/models/` | Downloaded MiniLM model cache |
 | `data/trash/pdfs/` and `data/trash/covers/` | Deleted files waiting for restore or purge |
 | `data/trash.json` | Deleted-book metadata |
 
 Copy `data/` to back up PDFs, covers, and the library index. Browser progress, bookmarks, theme, and reader settings are stored separately in `localStorage` and are not included in that backup. Expired trash is purged on a later delete or restore.
+
+AI indexes stay under `data/ai/<book-id>/` during the same 30-day trash window, but deleted books cannot be searched. Undo reuses the index, or queues a new build if one is missing. Purging an expired book also removes its AI directory, without removing the shared model cache. These indexes contain extracted book text, so protect them like the original PDFs. They can be regenerated from the PDFs if omitted from a backup.
 
 ## Configuration
 
@@ -143,8 +158,12 @@ Better Reader needs one long-running server process and a persistent, writable d
 | --- | --- |
 | `src/app/` | Next.js pages and PDF API routes |
 | `src/lib/pdf-store/` | JSON index, PDF and cover files, soft-delete and restore |
+| `src/lib/ai/` | Local embedding worker, per-book indexes, and server-only evidence retrieval |
+| `src/instrumentation.ts` | Queues unfinished or missing indexes on server startup |
 | `src/components/library/` | Library data flow, upload, search, cards, covers, and feedback |
 | `src/components/reader/` | PDF.js reader, navigation state, virtualized rendering, search, and settings |
 | Browser `localStorage` | Theme and per-book progress, bookmarks, and preferences |
 
 The server serves original PDFs directly to PDF.js. The reader requests byte ranges as needed; it does not copy or rewrite a document to open it.
+
+Keep `src/lib/ai/*.mjs` and installed dependencies alongside the production build. The worker runs those files directly with Node.js, outside Next.js bundling. Automated unit tests do not download models or launch automatic indexing workers.
