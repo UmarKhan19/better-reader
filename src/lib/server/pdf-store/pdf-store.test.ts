@@ -1,39 +1,11 @@
-import { test, after } from "node:test";
+import { test, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { ai, cleanupLibrary, dir, pdfUpload, PNG, resetLibrary, store } from "../../../../tests/helpers/library";
 
-// The store reads BETTER_READER_DATA_DIR lazily, so this file owns a disposable
-// data directory without changing the process working directory. Route handlers
-// are exercised here too: they share this module instance, so they must not have
-// a second importer in another test file.
-const dir = await mkdtemp(path.join(tmpdir(), "better-reader-store-"));
-process.env.BETTER_READER_DATA_DIR = path.join(dir, "data");
-assert.notEqual(path.resolve(process.env.BETTER_READER_DATA_DIR), path.resolve(process.cwd(), "data"),
-  "tests must never point at the real library");
-const store = await import("./pdf-store");
-const ai = await import("./ai");
-const routes = {
-  library: await import("../app/api/pdfs/route"),
-  pdf: await import("../app/api/pdfs/[id]/route"),
-  cover: await import("../app/api/pdfs/[id]/cover/route"),
-};
-
-after(async () => {
-  await chmod(path.join(dir, "data"), 0o755).catch(() => {});
-  delete process.env.BETTER_READER_DATA_DIR;
-  await rm(dir, { recursive: true, force: true });
-});
-
-let serial = 0;
-function pdfUpload(bytes = "%PDF-1.4\n%%EOF", name = `book-${++serial}.pdf`): [ReadableStream<Uint8Array>, string] {
-  return [new Blob([bytes]).stream(), name];
-}
-const PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5WQAAAAASUVORK5CYII=",
-  "base64",
-);
+beforeEach(resetLibrary);
+after(cleanupLibrary);
 
 test("uploads keep their exact bytes and show up in the list", async () => {
   const bytes = "%PDF-1.4\noriginal library file\n%%EOF";
@@ -93,6 +65,7 @@ test("parallel uploads all survive the shared index", async () => {
 
 test("a failed index write leaves the previous library readable and no orphan upload", async () => {
   if (typeof process.getuid === "function" && process.getuid() === 0) return; // permission checks need a normal user
+  await store.savePdf(...pdfUpload(undefined, "kept-before-failure.pdf"));
   const before = await store.listPdfs();
   const data = path.join(dir, "data");
   const uploadsBefore = (await readdir(path.join(data, "uploads"))).sort();
@@ -217,6 +190,24 @@ async function aiIndex(id: string, content = "saved embeddings") {
   return file;
 }
 
+test("index coordinates are canonical and missing originals cannot publish derived data", async () => {
+  const item = await store.savePdf(...pdfUpload());
+  const files = store.bookIndexPaths(item.id);
+  assert.equal(files.pdfFile, store.pdfFilePath(item.id));
+  assert.equal(files.indexFile, path.join(dir, "data", "ai", item.id, "index.json"));
+  assert.equal(files.tempFile, `${files.indexFile}.tmp`);
+  assert.equal(files.cacheDir, path.join(dir, "data", "ai", "models"));
+  assert.equal(await store.livePdfPath(item.id), files.pdfFile);
+  assert.throws(() => store.bookIndexPaths("../uploads"), /Invalid book ID/);
+  assert.equal(await store.livePdfPath("../uploads"), null);
+  await aiIndex(item.id);
+  await writeFile(files.tempFile, "unfinished replacement");
+  await rm(files.pdfFile);
+  assert.equal(await store.livePdfPath(item.id), null);
+  assert.equal(await store.publishBookIndex(item.id), false);
+  assert.equal(await readFile(files.indexFile, "utf8"), "saved embeddings");
+});
+
 test("AI indexes survive delete/undo but deleted books cannot return evidence", async () => {
   const item = await store.savePdf(...pdfUpload(undefined, "indexed.pdf"));
   const file = await aiIndex(item.id);
@@ -231,11 +222,11 @@ test("an index finishing after delete cannot publish or resurrect a book", async
   const item = await store.savePdf(...pdfUpload(undefined, "index-race.pdf"));
   const file = await aiIndex(item.id, "old index");
   await writeFile(`${file}.tmp`, "new index");
-  assert.equal(await ai.publishBookIndex(item.id, `${file}.tmp`), true);
+  assert.equal(await store.publishBookIndex(item.id), true);
   assert.equal(await readFile(file, "utf8"), "new index");
   await store.deletePdf(item.id);
   await writeFile(`${file}.tmp`, "late index");
-  assert.equal(await ai.publishBookIndex(item.id, `${file}.tmp`), false);
+  assert.equal(await store.publishBookIndex(item.id), false);
   assert.equal(await readFile(file, "utf8"), "new index");
   assert.equal(await store.findPdf(item.id), null);
 });
@@ -270,104 +261,4 @@ test("retrieval rejects unsafe IDs and empty or oversized questions before worke
   const item = await store.savePdf(...pdfUpload());
   await assert.rejects(ai.searchBook(item.id, "  "), /Question/);
   await assert.rejects(ai.searchBook(item.id, "x".repeat(2001)), /Question/);
-});
-
-// Route handlers: the same store instance, driven the way Next calls them.
-
-const api = "http://127.0.0.1:3000/api/pdfs";
-const context = (id: string) => ({ params: Promise.resolve({ id }) });
-// Real HTTP requests always carry a Host header; the guard needs one.
-function req(url: string, init: RequestInit = {}, host = "localhost") {
-  return new Request(url, { ...init, headers: { ...init.headers as Record<string, string>, host } });
-}
-const library = async () => (await (await routes.library.GET(req(api))).json()) as { items: { id: string; name: string }[] };
-const postPdf = (name: string, body: BodyInit, contentType: string) => routes.library.POST(req(api, {
-  method: "POST",
-  headers: { "content-type": contentType, "x-file-name": encodeURIComponent(name) },
-  body,
-}));
-
-test("a foreign Host is refused by every PDF endpoint", async () => {
-  assert.equal((await routes.library.GET(req(api, {}, "evil.com"))).status, 403);
-  assert.equal((await postPdf("books.pdf", "%PDF-1.4\n%%EOF", "application/pdf")).status, 201);
-  const [item] = (await library()).items;
-  assert.equal((await routes.pdf.GET(req(`${api}/${item.id}`, {}, "evil.com"), context(item.id))).status, 403);
-  assert.equal((await routes.cover.GET(req(`${api}/${item.id}/cover`, {}, "evil.com"), context(item.id))).status, 403);
-  assert.equal((await routes.pdf.DELETE(req(`${api}/${item.id}`, { method: "DELETE" }, "evil.com"), context(item.id))).status, 403);
-  assert.ok((await library()).items.some((entry) => entry.id === item.id), "the refused delete changed nothing");
-});
-
-test("POST /api/pdfs streams a named PDF into the library", async () => {
-  const bytes = "%PDF-1.4\nroute test pdf\n%%EOF";
-  const response = await postPdf("My Book.pdf", bytes, "application/pdf");
-  assert.equal(response.status, 201);
-  const body = await response.json() as { items: { id: string; name: string; size: number }[] };
-  assert.equal(body.items.length, 1);
-  assert.equal(body.items[0].name, "My Book.pdf");
-  assert.equal(body.items[0].size, Buffer.byteLength(bytes), "the size is measured after writing, not taken from the header");
-});
-
-test("POST /api/pdfs refuses a body that is not a PDF", async () => {
-  for (const contentType of ["text/plain", "application/octet-stream"]) {
-    const response = await postPdf("notes.txt", "hello", contentType);
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), { error: "not a PDF" });
-  }
-});
-
-test("GET /api/pdfs lists what was uploaded", async () => {
-  const { items } = await library();
-  assert.ok(items.some((item) => item.name === "My Book.pdf"));
-});
-
-test("delete and restore work through the route handlers", async () => {
-  const before = (await library()).items;
-  const [item] = before;
-  assert.equal((await routes.pdf.DELETE(req(`${api}/${item.id}`, { method: "DELETE" }), context(item.id))).status, 200);
-  assert.deepEqual((await library()).items.map((entry) => entry.id), before.slice(1).map((entry) => entry.id));
-  assert.equal((await routes.pdf.POST(req(`${api}/${item.id}?action=restore`, { method: "POST" }), context(item.id))).status, 200);
-  assert.deepEqual((await library()).items.map((entry) => entry.id).sort(), before.map((entry) => entry.id).sort());
-});
-
-test("restore is reachable only through the explicit action", async () => {
-  const [item] = (await library()).items;
-  const response = await routes.pdf.POST(req(`${api}/${item.id}`, { method: "POST" }), context(item.id));
-  assert.equal(response.status, 404);
-});
-
-test("the cover route stores an image and answers conditional requests", async () => {
-  const [item] = (await library()).items;
-  const posted = await routes.cover.POST(req(`${api}/${item.id}/cover`, { method: "POST", body: PNG, headers: { "content-type": "image/png" } }), context(item.id));
-  assert.equal(posted.status, 201);
-  const saved = (await posted.json() as { item: { hasCover: boolean } }).item;
-  assert.equal(saved.hasCover, true);
-
-  const first = await routes.cover.GET(req(`${api}/${item.id}/cover`), context(item.id));
-  assert.equal(first.status, 200);
-  assert.equal(first.headers.get("content-type"), "image/png");
-  const etag = first.headers.get("etag");
-  assert.ok(etag);
-  await first.body?.cancel();
-
-  const cached = await routes.cover.GET(req(`${api}/${item.id}/cover`, { headers: { "if-none-match": etag } }), context(item.id));
-  assert.equal(cached.status, 304);
-  const byDate = await routes.cover.GET(req(`${api}/${item.id}/cover`, { headers: { "if-modified-since": first.headers.get("last-modified")! } }), context(item.id));
-  assert.equal(byDate.status, 304);
-
-  assert.equal((await routes.cover.DELETE(req(`${api}/${item.id}/cover`, { method: "DELETE" }), context(item.id))).status, 200);
-  assert.equal((await routes.cover.GET(req(`${api}/${item.id}/cover`), context(item.id))).status, 404);
-});
-
-test("the cover route accepts only the cover field and reports an oversized image", async () => {
-  const [item] = (await library()).items;
-  const otherField = new FormData();
-  otherField.append("file", new File([PNG], "cover.png", { type: "image/png" }));
-  const rejected = await routes.cover.POST(req(`${api}/${item.id}/cover`, { method: "POST", body: otherField }), context(item.id));
-  assert.equal(rejected.status, 400, "an undocumented field name must not be stored");
-
-  const tooLarge = new File([Buffer.concat([PNG, Buffer.alloc(10 * 1024 * 1024 + 1)])], "big.png", { type: "image/png" });
-  const oversized = await routes.cover.POST(req(`${api}/${item.id}/cover`, {
-    method: "POST", body: tooLarge, headers: { "content-type": "image/png" },
-  }), context(item.id));
-  assert.equal(oversized.status, 413);
 });

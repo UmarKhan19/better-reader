@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { forbiddenHost } from "@/lib/host-guard";
-import { listPdfs, savePdf } from "@/lib/pdf-store";
-import { queueBookIndex } from "@/lib/ai";
+import { forbiddenHost } from "@/lib/server/http/host-guard";
+import { listPdfs, savePdf } from "@/lib/server/pdf-store";
+import { queueBookIndex } from "@/lib/server/book-index";
 
 /** The uploader sends the file bytes as the raw body; the name travels in a header. */
 function uploadName(header: string | null): string {

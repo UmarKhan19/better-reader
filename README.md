@@ -51,7 +51,7 @@ Better Reader is a self-hosted, single-user PDF library. Uploads stay on the ser
 - Uploading or restoring a book queues server-side text extraction and local embeddings without waiting for them in the response. Existing books are checked on server startup.
 - One low-priority worker process handles one job at a time. MiniLM inference uses one CPU thread, not the Next.js request process.
 - Each book has its own 384-dimensional index. Passages target 150 words with 30-word overlap, stay within 256 model tokens, and retain the original PDF page number.
-- No chat UI or LLM calls are included. The server helper `searchBook(id, question)` in `src/lib/ai/index.ts` returns up to ten passages with page numbers and scores, using 80% cosine similarity and 20% whole-word keyword matching. Questions must fit within 256 tokens and 2,000 characters. Future LLM callers should pass only these results as evidence.
+- No chat UI or LLM calls are included. The server helper `searchBook(id, question)` in `src/lib/server/book-index/index.ts` returns up to ten passages with page numbers and scores, using 80% cosine similarity and 20% whole-word keyword matching. Questions must fit within 256 tokens and 2,000 characters. Future LLM callers should pass only these results as evidence.
 
 The first text-bearing book downloads the quantized `Xenova/all-MiniLM-L6-v2` model from Hugging Face into `data/ai/models/`. Later inference uses that disk cache. Book text and questions never leave the server. Image-only pages have no extractable text; OCR is not included.
 
@@ -157,8 +157,8 @@ Better Reader needs one long-running server process and a persistent, writable d
 | Part | Responsibility |
 | --- | --- |
 | `src/app/` | Next.js pages and PDF API routes |
-| `src/lib/pdf-store/` | JSON index, PDF and cover files, soft-delete and restore |
-| `src/lib/ai/` | Local embedding worker, per-book indexes, and server-only evidence retrieval |
+| `src/lib/server/pdf-store/` | JSON index, PDF and cover files, soft-delete and restore |
+| `src/lib/server/book-index/` | Local embedding worker, per-book indexes, and server-only evidence retrieval |
 | `src/instrumentation.ts` | Queues unfinished or missing indexes on server startup |
 | `src/components/library/` | Library data flow, upload, search, cards, covers, and feedback |
 | `src/components/reader/` | PDF.js reader, navigation state, virtualized rendering, search, and settings |
@@ -166,4 +166,4 @@ Better Reader needs one long-running server process and a persistent, writable d
 
 The server serves original PDFs directly to PDF.js. The reader requests byte ranges as needed; it does not copy or rewrite a document to open it.
 
-Keep `src/lib/ai/*.mjs` and installed dependencies alongside the production build. The worker runs those files directly with Node.js, outside Next.js bundling. Automated unit tests do not download models or launch automatic indexing workers.
+Keep `src/lib/server/book-index/*.mjs` and installed dependencies alongside the production build. The worker runs those files directly with Node.js, outside Next.js bundling. Automated unit tests do not download models or launch automatic indexing workers.

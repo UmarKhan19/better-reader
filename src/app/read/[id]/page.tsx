@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { findPdf } from "@/lib/pdf-store";
+import { findPdf } from "@/lib/server/pdf-store";
 import { PdfReaderLoader } from "@/components/reader/pdf-reader-loader";
 
 export const instant = false;

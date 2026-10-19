@@ -1,13 +1,22 @@
+// @ts-check
+
 import { access, readFile, writeFile } from "node:fs/promises";
 import { constants, setPriority } from "node:os";
 import { getDocumentProxy } from "unpdf";
 import { chunkPage, EMBEDDING_MODEL, INDEX_VERSION, isBookIndex, isEmbedding, MAX_TOKENS, rankChunks } from "./core.mjs";
+import { isWorkerJob } from "./protocol.mjs";
+
+/** @typedef {import('./protocol.mjs').WorkerJob} WorkerJob */
+/** @param {import('./protocol.mjs').WorkerReply} reply */
+function send(reply) { process.send?.(reply); }
 
 // Native inference and PDF parsing stay outside Next's process, at low CPU priority.
 try { setPriority(0, constants.priority.PRIORITY_LOW); } catch { /* Not available on every host. */ }
 process.on("disconnect", () => process.exit(0));
 
+/** @type {import('@huggingface/transformers').FeatureExtractionPipeline | undefined} */
 let extractor;
+/** @param {string} cacheDir */
 async function getExtractor(cacheDir) {
   if (!extractor) {
     const { env, pipeline } = await import("@huggingface/transformers");
@@ -23,20 +32,22 @@ async function getExtractor(cacheDir) {
   return extractor;
 }
 
+/** @param {string} file @param {string} bookId */
 async function readIndex(file, bookId) {
   try {
     const value = JSON.parse(await readFile(file, "utf8"));
     return isBookIndex(value, bookId) ? value : null;
   } catch (error) {
-    if (error.code === "ENOENT" || error instanceof SyntaxError) return null;
+    if ((error instanceof Error && "code" in error && error.code === "ENOENT") || error instanceof SyntaxError) return null;
     throw error;
   }
 }
 
+/** @param {WorkerJob & { kind: 'index' }} job */
 async function indexBook(job) {
   if (await readIndex(job.indexFile, job.bookId)) return { indexed: false };
   const pdf = await getDocumentProxy(new Uint8Array(await readFile(job.pdfFile)), {
-    isEvalSupported: false, maxImageSize: 16_777_216, verbosity: 0,
+    maxImageSize: 16_777_216, verbosity: 0,
   });
   const chunks = [];
   try {
@@ -59,12 +70,12 @@ async function indexBook(job) {
             if (!isEmbedding(embeddings[i])) throw new Error("Invalid model embedding");
             chunks.push({ ...batch[i], embedding: embeddings[i] });
           }
-          process.send({ type: "progress" });
+          send({ type: "progress" });
         }
       } finally {
         page.cleanup();
       }
-      process.send({ type: "progress" });
+      send({ type: "progress" });
     }
     const index = { bookId: job.bookId, version: INDEX_VERSION, embeddingModel: EMBEDDING_MODEL, chunks };
     await writeFile(job.tempFile, JSON.stringify(index), "utf8");
@@ -74,6 +85,7 @@ async function indexBook(job) {
   }
 }
 
+/** @param {WorkerJob & { kind: 'search' }} job */
 async function searchBook(job) {
   const index = await readIndex(job.indexFile, job.bookId);
   if (!index) throw new Error("Book index is not ready");
@@ -86,9 +98,10 @@ async function searchBook(job) {
 
 process.on("message", async (job) => {
   try {
-    const result = job.kind === "index" ? await indexBook(job) : await searchBook(job);
-    process.send({ type: "done", ...result });
+    if (!isWorkerJob(job)) throw new Error("Invalid book indexing worker job");
+    if (job.kind === "index") send({ type: "done", kind: "index", ...await indexBook(job) });
+    else send({ type: "done", kind: "search", ...await searchBook(job) });
   } catch (error) {
-    process.send({ type: "error", error: error instanceof Error ? error.message : String(error) });
+    send({ type: "error", error: error instanceof Error ? error.message : String(error) });
   }
 });

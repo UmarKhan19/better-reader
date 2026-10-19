@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { forbiddenHost } from "@/lib/host-guard";
-import { COVER_MAX_BYTES, isValidPdfId, resolveCoverFilePath, saveCover, deleteCover } from "@/lib/pdf-store";
-import { serveFile } from "@/lib/serve-file";
+import { forbiddenHost } from "@/lib/server/http/host-guard";
+import { COVER_MAX_BYTES, isValidPdfId, resolveCoverFilePath, saveCover, deleteCover } from "@/lib/server/pdf-store";
+import { serveFile } from "@/lib/server/http/serve-file";
 
 type Context = { params: Promise<{ id: string }> };
 

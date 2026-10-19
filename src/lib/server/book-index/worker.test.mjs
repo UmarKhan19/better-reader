@@ -6,23 +6,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isBookIndex } from "./core.mjs";
-
-function blankPdf() {
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
-    "<< /Length 0 >>\nstream\n\nendstream",
-  ];
-  let pdf = "%PDF-1.4\n";
-  const offsets = objects.map((object, i) => {
-    const offset = Buffer.byteLength(pdf);
-    pdf += `${i + 1} 0 obj\n${object}\nendobj\n`;
-    return offset;
-  });
-  const xref = Buffer.byteLength(pdf);
-  return `${pdf}xref\n0 5\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-}
+import { pdfFixture } from "../../../../tests/fixtures/pdf.mjs";
+const blankPdf = () => pdfFixture({ pages: 1, width: 612, height: 792, blank: true });
 
 test("worker extracts and closes PDFs, reuses indexes, and survives a bad book without downloading a model", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "better-reader-ai-worker-"));

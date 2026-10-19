@@ -7,8 +7,7 @@ import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { randomUUID } from "node:crypto";
 import type { PdfItem } from "@/types/pdf";
 import * as storage from "./storage";
-import { serialized, fileExists, isValidPdfId, isPdfItem, COVERS_DIR, INDEX_FILE, UPLOADS_DIR, ensureDirs } from "./storage";
-import { applyCoverMetadata, clearCoverMetadata, getCoverMap } from "./covers";
+import { serialized, isValidPdfId, isPdfItem, INDEX_FILE, UPLOADS_DIR, ensureDirs } from "./storage";
 
 // Normalize a stored record to canonical cover fields only.
 export function normalizeItem(value: unknown): PdfItem | null {
@@ -47,28 +46,6 @@ export async function findPdf(id: string): Promise<PdfItem | null> {
   if (!isValidPdfId(id)) return null;
   const items = await readIndex();
   return items.find((item) => item.id === id) ?? null;
-}
-
-export async function listPdfs(): Promise<PdfItem[]> {
-  await ensureDirs();
-  const items = await readIndex();
-  const coverByOwner = await getCoverMap();
-  const enriched = items.map((item) => {
-    const fileName = coverByOwner.get(item.id);
-    if (fileName) {
-      return applyCoverMetadata(item, fileName, item.coverVersion);
-    }
-    if (item.hasCover) return clearCoverMetadata(item);
-    return item;
-  });
-  const verified = await Promise.all(enriched.map(async (item) => {
-    if (!item.hasCover || !item.coverFileName) return item;
-    const full = path.join(COVERS_DIR, item.coverFileName);
-    if (await fileExists(full)) return item;
-    coverByOwner.delete(item.id);
-    return clearCoverMetadata(item);
-  }));
-  return verified.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export function pdfFilePath(id: string): string {

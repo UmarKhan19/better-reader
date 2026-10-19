@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
-import { isNotModified, mayServeRange, parseByteRange } from "@/lib/pdf-http";
+import { isNotModified, mayServeRange, parseByteRange } from "@/lib/server/http/pdf-http";
 
 export type ServeFileOptions = {
   filePath: string;

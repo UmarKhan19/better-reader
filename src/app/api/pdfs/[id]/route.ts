@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { forbiddenHost } from "@/lib/host-guard";
-import { isValidPdfId, pdfFilePath, deletePdf, restorePdf } from "@/lib/pdf-store";
-import { serveFile } from "@/lib/serve-file";
-import { queueBookIndex } from "@/lib/ai";
+import { forbiddenHost } from "@/lib/server/http/host-guard";
+import { isValidPdfId, pdfFilePath, deletePdf, restorePdf } from "@/lib/server/pdf-store";
+import { serveFile } from "@/lib/server/http/serve-file";
+import { queueBookIndex } from "@/lib/server/book-index";
 
 async function servePdf(request: Request, id: string) {
   const forbidden = forbiddenHost(request);
