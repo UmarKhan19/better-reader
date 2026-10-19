@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { launchAgentBrowser, readConfig, readyExpression, resetStorageExpression } from "../../../scripts/lib/reader-browser.mjs";
+import { launchAgentBrowser } from "../../../scripts/lib/reader-launch.mjs";
+import { readConfig, readyExpression, resetStorageExpression } from "../../../scripts/lib/reader-expressions.mjs";
 import limits from "../../../src/components/reader/viewport/reader-limits.json" with { type: "json" };
 
 export async function createAgentReader(group) {

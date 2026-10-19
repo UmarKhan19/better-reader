@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { launchBrowser, readConfig, waitFor } from "../../scripts/lib/reader-browser.mjs";
+import { waitFor } from "../../scripts/lib/reader-cdp.mjs";
+import { launchBrowser } from "../../scripts/lib/reader-launch.mjs";
+import { readConfig } from "../../scripts/lib/reader-expressions.mjs";
 import { pdfFixture } from "../fixtures/pdf.mjs";
 import { assertDisposableLibrary } from "./library-safety.mjs";
 

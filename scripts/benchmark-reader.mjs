@@ -2,7 +2,9 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { cleanupBrowsers, launchBrowser, readConfig, readyExpression, sleep, waitFor } from './lib/reader-browser.mjs';
+import { cleanupBrowsers, sleep, waitFor } from './lib/reader-cdp.mjs';
+import { launchBrowser } from './lib/reader-launch.mjs';
+import { readConfig, readyExpression } from './lib/reader-expressions.mjs';
 
 export function percentile(values, fraction) {
   if (!values.length) return null;

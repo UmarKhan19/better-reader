@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { createReaderLibrary } from "../tests/fixtures/reader-library.mjs";
-import { sleep } from "./lib/reader-browser.mjs";
+import { sleep } from "./lib/reader-cdp.mjs";
 import { browserGroups, isolatedBrowserEnv, requireBrowserRuntime, selectBrowserGroups } from "./lib/browser-groups.mjs";
 
 requireBrowserRuntime();

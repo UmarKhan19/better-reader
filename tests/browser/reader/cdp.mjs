@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { launchBrowser, readConfig, readyExpression, resetStorageExpression, sleep, waitFor } from "../../../scripts/lib/reader-browser.mjs";
+import { sleep, waitFor } from "../../../scripts/lib/reader-cdp.mjs";
+import { launchBrowser } from "../../../scripts/lib/reader-launch.mjs";
+import { readConfig, readyExpression, resetStorageExpression } from "../../../scripts/lib/reader-expressions.mjs";
 import limits from "../../../src/components/reader/viewport/reader-limits.json" with { type: "json" };
 
 export async function createInteractionReader() {

@@ -5,7 +5,9 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import vm from "node:vm";
-import { launchBrowser, readConfig, readyExpression, resetStorageExpression, waitFor } from "./reader-browser.mjs";
+import { waitFor } from "./reader-cdp.mjs";
+import { launchBrowser } from "./reader-launch.mjs";
+import { readConfig, readyExpression, resetStorageExpression } from "./reader-expressions.mjs";
 
 test("reader checks share validated controls and have no personal-library defaults", () => {
   const config = readConfig({ BENCH_CPU: "4", BENCH_LATENCY_MS: "150", BENCH_DOWNLOAD_BPS: "200000", BENCH_WIDTH: "390", BENCH_HEIGHT: "844" });
@@ -81,7 +83,7 @@ console.log(source === undefined ? "done" : JSON.stringify(source === "bad" ? { 
 `, { mode: 0o755 });
     const result = spawnSync("node", ["--input-type=module", "-e", `
       import assert from "node:assert/strict";
-      import { launchAgentBrowser } from ${JSON.stringify(new URL("./reader-browser.mjs", import.meta.url).href)};
+      import { launchAgentBrowser } from ${JSON.stringify(new URL("./reader-launch.mjs", import.meta.url).href)};
       for (const chrome of ["/owned/chromium", undefined]) {
         const agent = await launchAgentBrowser({ chrome }, chrome ? "isolated-adapter-test" : "default-executable-test");
         try {
