@@ -1,0 +1,71 @@
+@layer components {
+  .bk-poster-art {
+    container-type: inline-size;
+  }
+  .bk-poster-title {
+    font-size: clamp(0.75rem, 11cqw, 2.25rem);
+  }
+  .bk-poster-mark {
+    font-size: 66cqw;
+  }
+  .bk-hero-jacket {
+    transform: rotate(5deg);
+    box-shadow: 14px 24px 40px -12px rgb(0 0 0 / 35%);
+  }
+  /* The narrow highlight follows a book's bound edge. */
+  .bk-hero-jacket::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 8%;
+    background: linear-gradient(to right, rgb(0 0 0 / 24%), transparent 35%, rgb(255 255 255 / 14%) 65%, transparent);
+    pointer-events: none;
+  }
+  .bk-hero-scrim {
+    pointer-events: none;
+    background: linear-gradient(to top, #fafafa 0%, rgb(250 250 250 / 97%) 35%, rgb(250 250 250 / 70%) 100%);
+  }
+  :global(.dark) .bk-hero-scrim {
+    background: linear-gradient(to top, #141414 0%, rgb(20 20 20 / 95%) 35%, rgb(20 20 20 / 45%) 100%);
+  }
+  @media (min-width: 768px) {
+    .bk-hero-scrim {
+      background: linear-gradient(to right, #fafafa 0%, rgb(250 250 250 / 96%) 35%, rgb(250 250 250 / 58%) 100%);
+    }
+    :global(.dark) .bk-hero-scrim {
+      background: linear-gradient(to right, #141414 0%, rgb(20 20 20 / 94%) 35%, rgb(20 20 20 / 42%) 100%);
+    }
+  }
+  /* The one authored entrance: the hero walks on like a title card. */
+  @keyframes bk-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .bk-rise {
+    animation: bk-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bk-rise {
+      animation: none;
+    }
+  }
+  /* Posters slide under a soft edge instead of a hard cut. */
+  .bk-fade-right {
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+  }
+  .bk-fade-left {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 28px);
+    mask-image: linear-gradient(to right, transparent, black 28px);
+  }
+  .bk-fade-both {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);
+  }
+}

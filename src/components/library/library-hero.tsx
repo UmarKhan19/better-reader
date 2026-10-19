@@ -7,6 +7,7 @@ import { PosterArtwork } from "./library-artwork";
 import { displayName } from "@/lib/pdf-title";
 import { coverSrc, formatBytes, formatDate, isFinished, progressPercent, type ReadingProgress } from "./library-model";
 import { DISPLAY, FOCUS_OFFSET, FOCUS_RED } from "./library-styles";
+import styles from "./library.module.css";
 
 export function LibraryHero({ item, progress, coverFailed, onCoverError }: {
   item: PdfItem;
@@ -34,14 +35,14 @@ export function LibraryHero({ item, progress, coverFailed, onCoverError }: {
       ) : (
         <PosterArtwork title={name} className="absolute inset-0 h-full w-full" mark="" showTitle={false} />
       )}
-      <div className="bk-hero-scrim absolute inset-0" aria-hidden="true" />
+      <div className={`${styles["bk-hero-scrim"]} absolute inset-0`} aria-hidden="true" />
       <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-neutral-50 to-transparent dark:from-[#141414]" aria-hidden="true" />
       <div className="relative grid items-center gap-7 px-4 pt-8 pb-9 md:min-h-[33rem] md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] md:gap-10 md:px-12 md:py-12 lg:min-h-[36rem] lg:px-16">
         <div className="min-w-0 max-w-2xl md:py-4">
-          <h2 id="featured-title" className={`${DISPLAY} bk-rise line-clamp-3 text-4xl leading-[0.98] tracking-[0.02em] text-balance wrap-anywhere text-neutral-900 sm:text-5xl lg:text-6xl xl:text-7xl dark:text-white`}>
+          <h2 id="featured-title" className={`${DISPLAY} ${styles["bk-rise"]} line-clamp-3 text-4xl leading-[0.98] tracking-[0.02em] text-balance wrap-anywhere text-neutral-900 sm:text-5xl lg:text-6xl xl:text-7xl dark:text-white`}>
             {name}
           </h2>
-          <div className="bk-rise mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-neutral-600 md:text-sm dark:text-neutral-300" style={{ animationDelay: "90ms" }}>
+          <div className={`${styles["bk-rise"]} mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-neutral-600 md:text-sm dark:text-neutral-300`} style={{ animationDelay: "90ms" }}>
             <span className="tabular-nums">{formatBytes(item.size)}</span>
             <span aria-hidden="true" className="text-neutral-400 dark:text-white/30">·</span>
             <span>Added {formatDate(item.createdAt)}</span>
@@ -52,7 +53,7 @@ export function LibraryHero({ item, progress, coverFailed, onCoverError }: {
             )}
           </div>
           {progress && (
-            <div className="bk-rise mt-5 max-w-80" style={{ animationDelay: "150ms" }}>
+            <div className={`${styles["bk-rise"]} mt-5 max-w-80`} style={{ animationDelay: "150ms" }}>
               <div className="flex items-center justify-between gap-3 text-xs tabular-nums text-neutral-600 dark:text-neutral-300">
                 <span>Page {progress.page}{progress.numPages ? ` of ${progress.numPages}` : ""}</span>
                 {progress.numPages > 0 && <span className="font-medium text-neutral-900 dark:text-white">{progressPercent(progress)}% read</span>}
@@ -64,7 +65,7 @@ export function LibraryHero({ item, progress, coverFailed, onCoverError }: {
               )}
             </div>
           )}
-          <div className="bk-rise mt-6 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ animationDelay: "210ms" }}>
+          <div className={`${styles["bk-rise"]} mt-6 flex flex-wrap items-center gap-x-6 gap-y-3`} style={{ animationDelay: "210ms" }}>
             <Link
               href={`/read/${item.id}`}
               prefetch={false}
@@ -82,8 +83,8 @@ export function LibraryHero({ item, progress, coverFailed, onCoverError }: {
             </a>
           </div>
         </div>
-        <div aria-hidden="true" className="bk-rise order-first flex justify-center px-5 md:order-last" style={{ animationDelay: "90ms" }}>
-          <div className="bk-hero-jacket relative aspect-[2/3] w-28 overflow-hidden rounded-sm bg-neutral-900 sm:w-36 md:w-56 lg:w-64 xl:w-72">
+        <div aria-hidden="true" className={`${styles["bk-rise"]} order-first flex justify-center px-5 md:order-last`} style={{ animationDelay: "90ms" }}>
+          <div className={`${styles["bk-hero-jacket"]} relative aspect-[2/3] w-28 overflow-hidden rounded-sm bg-neutral-900 sm:w-36 md:w-56 lg:w-64 xl:w-72`}>
             {hasCover ? (
               <Image
                 src={cover}

@@ -63,7 +63,8 @@ test("cards retain reading labels, finished status and per-item cover controls",
 test("failed cover images fall back to artwork without hiding cover removal", () => {
   const html = renderToStaticMarkup(<LibraryCard {...card}
     item={{ ...card.item, hasCover: true }} coverFailed coverBusy />);
-  assert.match(html, /bk-poster-art/);
+  assert.match(html, /<span[^>]*>OB<\/span>/);
+  assert.match(html, /<span[^>]*>The Open Book<\/span>/);
   assert.doesNotMatch(html, /<img/);
   assert.match(html, /disabled=""[^>]*aria-label="Add cover image/);
   assert.match(html, /disabled=""[^>]*aria-label="Remove cover image/);

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LibraryCard, type LibraryCardProps } from "./library-card";
 import { DISPLAY, FOCUS_RED } from "./library-styles";
+import styles from "./library.module.css";
 
 export function LibraryShelf({ cards }: { cards: LibraryCardProps[] }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -67,9 +68,9 @@ export function LibraryShelf({ cards }: { cards: LibraryCardProps[] }) {
         onScroll={updateFade}
         className={cn(
           "flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden scroll-px-4 pt-1 pb-5 no-scrollbar md:gap-4",
-          fade === "right" && "bk-fade-right",
-          fade === "left" && "bk-fade-left",
-          fade === "both" && "bk-fade-both",
+          fade === "right" && styles["bk-fade-right"],
+          fade === "left" && styles["bk-fade-left"],
+          fade === "both" && styles["bk-fade-both"],
         )}
       >
         {cards.map((card) => (

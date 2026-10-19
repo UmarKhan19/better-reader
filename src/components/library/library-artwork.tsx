@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { TITLE_SMALL_WORDS } from "@/lib/pdf-title";
 import { DISPLAY } from "./library-styles";
+import styles from "./library.module.css";
 
 const POSTER_PALETTES = [
   { base: "#2b4940", ink: "#e5e8ca" },
@@ -39,7 +40,7 @@ export function PosterArtwork({
   return (
     <div
       aria-hidden="true"
-      className={cn("bk-poster-art relative isolate overflow-hidden", className)}
+      className={cn(styles["bk-poster-art"], "relative isolate overflow-hidden", className)}
       style={{ backgroundColor: palette.base, color: palette.ink }}
     >
       <span className="absolute inset-[6%] border border-current opacity-20" />
@@ -51,13 +52,13 @@ export function PosterArtwork({
         <span className="absolute right-[12%] bottom-[11%] h-[40%] w-[64%] -skew-x-12 border border-current opacity-25" />
       )}
       {mark && (
-        <span className={`${DISPLAY} bk-poster-mark absolute bottom-[12%] left-[10%] select-none leading-[0.8] tracking-[-0.03em] opacity-70`}>
+        <span className={`${DISPLAY} ${styles["bk-poster-mark"]} absolute bottom-[12%] left-[10%] select-none leading-[0.8] tracking-[-0.03em] opacity-70`}>
           {mark}
         </span>
       )}
       <span className="absolute top-[11%] left-[12%] h-px w-[18%] bg-current opacity-70" />
       {showTitle && (
-        <span className={`${DISPLAY} bk-poster-title absolute inset-x-[12%] top-[16%] line-clamp-5 leading-[0.98] tracking-[0.015em] wrap-anywhere`}>
+        <span className={`${DISPLAY} ${styles["bk-poster-title"]} absolute inset-x-[12%] top-[16%] line-clamp-5 leading-[0.98] tracking-[0.015em] wrap-anywhere`}>
           {title}
         </span>
       )}
