@@ -8,6 +8,9 @@
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint",
     "test": "bun test",
+    "typecheck": "next typegen && tsc --noEmit --incremental false",
+    "check": "bun run typecheck && bun run lint && bun test",
+    "test:browser": "node scripts/test-reader.mjs",
     "test:reader": "node scripts/check-reader.mjs",
     "test:reader:interactions": "node scripts/check-reader-interactions.mjs",
     "benchmark:reader": "node scripts/benchmark-reader.mjs"

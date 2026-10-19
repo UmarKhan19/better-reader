@@ -5,10 +5,10 @@ import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { readyExpression } from "./benchmark-reader.mjs";
+import { readConfig, readyExpression } from "./lib/reader-browser.mjs";
 import limits from "../src/components/reader/viewport/reader-limits.json" with { type: "json" };
 
-const origin = process.env.READER_URL ?? "http://localhost:3000";
+const { origin } = readConfig();
 const screenshots = process.env.READER_SCREENSHOTS ? path.resolve(process.env.READER_SCREENSHOTS) : undefined;
 const session = `reader-verify-${process.pid}`;
 const items = (await (await fetch(`${origin}/api/pdfs`)).json()).items;
@@ -21,6 +21,14 @@ if (screenshots) await mkdir(screenshots, { recursive: true });
 const profile = await mkdtemp(path.join(os.tmpdir(), "better-reader-browser-"));
 const browserFlags = ["--session", session, "--profile", profile, "--headed", "false"];
 let browserStarted = false;
+let cleanupPromise;
+
+const cleanup = () => cleanupPromise ??= (async () => {
+  try { if (browserStarted) browser("close"); } catch (error) { console.warn("Browser cleanup:", error.message); }
+  await rm(profile, { recursive: true, force: true });
+})();
+process.once("SIGINT", () => { void cleanup().finally(() => process.exit(130)); });
+process.once("SIGTERM", () => { void cleanup().finally(() => process.exit(143)); });
 
 function browser(...args) {
   const output = execFileSync("agent-browser", [...browserFlags, ...args], {
@@ -39,7 +47,7 @@ function evaluate(source) {
 }
 function wait(source) {
   const settled = evaluate(`new Promise(resolve => {
-    const deadline=Date.now()+25000;
+    const deadline=Date.now()+18000;
     let readySince=0;
     function poll() {
       let ready=false;
@@ -102,7 +110,8 @@ function pageWithText() {
   })()`);
 }
 function setSetting(kind, value) {
-  click(`dialog[open] label:has(input[value="${value}"])`);
+  const presentation = kind === "theme" ? "segmented" : "paper";
+  click(`dialog[open] [data-presentation="${presentation}"] label:has(input[value="${value}"])`);
   assert.equal(evaluate(`document.querySelector('[data-reader-root]').getAttribute('data-${kind}')`), value);
 }
 
@@ -415,6 +424,5 @@ try {
   try { screenshot("failure"); console.error(browser("snapshot", "-i")); console.error(browser("errors")); } catch {}
   throw error;
 } finally {
-  try { if (browserStarted) browser("close"); } catch (error) { console.warn("Browser cleanup:", error.message); }
-  await rm(profile, { recursive: true, force: true });
+  await cleanup();
 }

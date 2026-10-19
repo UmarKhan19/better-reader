@@ -26,8 +26,7 @@ The interaction check observed 14 panoramic pages visible together and a rapid-z
 Use an existing Chromium installation and Node 22+. No browser download or additional npm package is required. Start a production server you own on a free loopback port:
 
 ```sh
-bun run test
-bun run lint
+bun run check
 bun run build
 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3100
 ```
@@ -37,9 +36,10 @@ In another terminal:
 ```sh
 READER_URL=http://localhost:3100 bun run test:reader
 READER_URL=http://localhost:3100 bun run test:reader:interactions
-READER_URL=http://localhost:3100 BENCH_OUTPUT=/tmp/reader-desktop.json bun run benchmark:reader
+READER_URL=http://localhost:3100 READER_PDF_IDS=your-pdf-id BENCH_OUTPUT=/tmp/reader-desktop.json bun run benchmark:reader
 
 READER_URL=http://localhost:3100 \
+READER_PDF_IDS=your-pdf-id \
 BENCH_REPEATS=1 BENCH_STEPS=4 \
 BENCH_CPU=4 BENCH_LATENCY_MS=100 \
 BENCH_DOWNLOAD_BPS=750000 BENCH_UPLOAD_BPS=250000 \
@@ -48,6 +48,8 @@ BENCH_OUTPUT=/tmp/reader-throttled.json bun run benchmark:reader
 ```
 
 Stop only your own server afterward. Do not restart someone else's development server.
+
+For routine regression checks, `bun run test:browser` uses the existing production build and starts its own isolated server/library instead. It generates synthetic PDFs and uses a prebuilt empty test index to avoid inference/model downloads. Shared browser helpers live in `scripts/lib/reader-browser.mjs`; PDF fixtures live in `tests/fixtures/`. This smoke suite is not a representative-book benchmark.
 
 `test:reader` uses agent-browser with a unique explicit temporary profile. It checks HTTP caching/ranges, keyboard navigation, all layouts, crop controls, fractional restoration, bookmarks, paper/themes, focus/dialogs, Search focus and retained highlights, Back, thumbnail virtualization, pixel limits, text selection, 320px/landscape overflow and axe accessibility. Set `READER_PDF_ID` to an existing document. `READER_SCREENSHOTS` saves a desktop/mobile batch; paths are resolved before passing them to the browser daemon.
 
@@ -59,9 +61,9 @@ All checks preserve original files. Reading progress and preferences written dur
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `READER_URL` | `http://127.0.0.1:3417` | Started production app |
+| `READER_URL` | `http://127.0.0.1:3100` | Started production app |
 | `CHROME_BIN` | `/usr/bin/chromium` | Existing executable |
-| `READER_PDF_IDS` | The two recorded library UUIDs | Comma-separated existing PDF IDs; override for another library |
+| `READER_PDF_IDS` | Required for benchmark | Comma-separated existing PDF IDs; no personal-library defaults |
 | `BENCH_REPEATS` | 5 | Fresh browser profiles per book |
 | `BENCH_STEPS` | 12 | Additional deterministic page jumps |
 | `BENCH_CPU` | 1 | CDP CPU slowdown factor |
@@ -73,7 +75,7 @@ All checks preserve original files. Reading progress and preferences written dur
 | `BENCH_SETTLE_MS` | 1000 | Final observation window |
 | `BENCH_OUTPUT` | Timestamped OS-temp path | Raw JSON and summaries |
 
-The recorded UUIDs are `fe94a0f3-3127-41e6-a2c1-f45ee481c36d` for the 419-page book and `5fe96d77-eb1d-4825-ab29-01fde4435215` for the 24-page document. The benchmark requires a multi-page PDF.
+The historical reports below used a 419-page book and a 24-page document. To repeat the benchmark, supply IDs from your own library. The benchmark requires a multi-page PDF.
 
 ## What the numbers mean
 

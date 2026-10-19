@@ -1,9 +1,8 @@
 // Production-only, read-only library benchmark. Node >=22 (native fetch/WebSocket).
-import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { cleanupBrowsers, launchBrowser, readConfig, readyExpression, sleep, waitFor } from './lib/reader-browser.mjs';
 
 export function percentile(values, fraction) {
   if (!values.length) return null;
@@ -12,88 +11,6 @@ export function percentile(values, fraction) {
 }
 export function summarize(values) {
   return { n: values.length, p50: percentile(values, .5), p95: percentile(values, .95) };
-}
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-const activeCleanups = new Set();
-
-class CDP {
-  constructor(socket) {
-    this.socket = socket; this.next = 0; this.pending = new Map(); this.listeners = new Map();
-    socket.addEventListener('message', ({ data }) => {
-      const message = JSON.parse(data);
-      if (message.id) {
-        const pending = this.pending.get(message.id);
-        if (!pending) return;
-        this.pending.delete(message.id); clearTimeout(pending.timer);
-        if (message.error) pending.reject(new Error(JSON.stringify(message.error)));
-        else pending.resolve(message.result);
-      } else for (const listener of this.listeners.get(message.method) ?? []) listener(message.params);
-    });
-  }
-  on(event, listener) { this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener]); }
-  send(method, params = {}) {
-    const id = ++this.next;
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { this.pending.delete(id); reject(new Error(`CDP timeout: ${method}`)); }, 30000);
-      this.pending.set(id, { resolve, reject, timer });
-      this.socket.send(JSON.stringify({ id, method, params }));
-    });
-  }
-  async evaluate(expression) {
-    const result = await this.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
-    if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
-    return result.result.value;
-  }
-  close() { this.socket.close(); }
-}
-
-export async function launchBrowser(config) {
-  const profile = await mkdtemp(path.join(tmpdir(), 'reader-benchmark-'));
-  const browser = spawn(config.chrome, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
-  let exitError;
-  browser.on('error', error => { exitError = error; });
-  let cdp, cleanupPromise;
-  const cleanup = () => cleanupPromise ??= (async () => {
-    activeCleanups.delete(cleanup);
-    cdp?.close();
-    if (browser.exitCode === null && browser.pid) {
-      browser.kill('SIGTERM');
-      await Promise.race([new Promise(resolve => browser.once('exit', resolve)), sleep(3000)]);
-      if (browser.exitCode === null) { browser.kill('SIGKILL'); await new Promise(resolve => browser.once('exit', resolve)); }
-    }
-    await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  })();
-  activeCleanups.add(cleanup);
-  try {
-    let port;
-    for (let i = 0; i < 100; i++) {
-      if (exitError) throw exitError;
-      try { port = Number((await readFile(path.join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]); break; } catch { await sleep(100); }
-    }
-    if (!port) throw new Error('Chromium did not expose a debugging port');
-    const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-    const socket = new WebSocket(targets.find(target => target.type === 'page').webSocketDebuggerUrl);
-    await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }); });
-    cdp = new CDP(socket);
-    return { cdp, cleanup };
-  } catch (error) { await cleanup(); throw error; }
-}
-
-// Both the incumbent single stage and the virtualized viewport use these contract attributes.
-export const readyExpression = (page) => `(() => {
-  const stage = document.querySelector('[data-reader-stage][aria-busy="false"]');
-  if (!stage ${page ? `|| Number(stage.dataset.pageNumber) !== ${page}` : ''}) return false;
-  const main = document.querySelector('main'), mr = main?.getBoundingClientRect();
-  const holder = stage.querySelector('[data-cached-page="' + stage.dataset.pageNumber + '"]') ?? stage;
-  return [...holder.querySelectorAll('canvas')].some(canvas => {
-    const r = canvas.getBoundingClientRect(), s = getComputedStyle(canvas);
-    return canvas.width > 0 && canvas.height > 0 && r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && mr && r.bottom > mr.top && r.top < mr.bottom && r.right > mr.left && r.left < mr.right;
-  });
-})()`;
-export async function waitFor(cdp, expression, timeout) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) { if (await cdp.evaluate(expression)) return; await sleep(40); }
-  throw new Error(`Readiness timeout: ${expression}`);
 }
 const header = (headers, name) => Object.entries(headers ?? {}).find(([key]) => key.toLowerCase() === name)?.[1] ?? null;
 
@@ -186,25 +103,15 @@ async function runSession(config, id, iteration) {
   } finally { await cleanup(); }
 }
 
-export function readConfig(env = process.env) {
-  const numeric = (key, fallback, min = 0) => { const value = Number(env[key] ?? fallback); if (!Number.isFinite(value) || value < min) throw new Error(`Invalid ${key}`); return value; };
-  const integer = (key, fallback, min) => { const value = numeric(key,fallback,min); if (!Number.isInteger(value)) throw new Error(`Invalid ${key}`); return value; };
-  return { origin: (env.READER_URL ?? 'http://127.0.0.1:3417').replace(/\/$/,''), chrome: env.CHROME_BIN ?? '/usr/bin/chromium',
-    ids: (env.READER_PDF_IDS ?? 'fe94a0f3-3127-41e6-a2c1-f45ee481c36d,5fe96d77-eb1d-4825-ab29-01fde4435215').split(','),
-    repeats: integer('BENCH_REPEATS', 5, 1), steps: integer('BENCH_STEPS', 12, 0), cpu: numeric('BENCH_CPU', 1, 1),
-    latency: numeric('BENCH_LATENCY_MS', 0), download: numeric('BENCH_DOWNLOAD_BPS', 0) || -1, upload: numeric('BENCH_UPLOAD_BPS', 0) || -1,
-    width: integer('BENCH_WIDTH', 1440, 1), height: integer('BENCH_HEIGHT', 900, 1), timeout: numeric('BENCH_TIMEOUT_MS', 60000, 1), cacheWait: numeric('BENCH_CACHE_WAIT_MS', 5000, 1), settle: numeric('BENCH_SETTLE_MS', 1000),
-    output: env.BENCH_OUTPUT ?? path.join(tmpdir(), `reader-benchmark-${Date.now()}.json`) };
-}
-
 async function main() {
   for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]]) {
     process.once(signal, async () => {
-      await Promise.allSettled([...activeCleanups].map(cleanup => cleanup()));
+      await cleanupBrowsers();
       process.exit(code);
     });
   }
   const config = readConfig();
+  if (!config.ids.length) throw new Error('Set READER_PDF_IDS to existing PDF UUIDs before benchmarking.');
   for (const id of config.ids) if (!/^[a-f\d-]{36}$/i.test(id)) throw new Error(`Invalid PDF id: ${id}`);
   const report = { timestamp: new Date().toISOString(), config, node: process.version, sessions: [], summary: {} };
   for (const id of config.ids) {

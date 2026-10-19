@@ -11,7 +11,7 @@ _A personal PDF library and browser reader that remembers your place._
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-3c873a?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-186%20passing-2ea44f?style=flat-square)](#checks)
+[![Tests](https://img.shields.io/badge/tests-bun%20test-2ea44f?style=flat-square)](#checks)
 
 [Features](#features) · [Getting started](#getting-started) · [Data and backups](#data-and-backups) · [Configuration](#configuration) · [Checks](#checks)
 
@@ -126,15 +126,22 @@ AI indexes stay under `data/ai/<book-id>/` during the same 30-day trash window, 
 
 ## Checks
 
-Run the unit tests, lint, and production build with:
+Run typechecking, lint, unit tests and the production build with:
 
 ```sh
-bun test
-bun run lint
+bun run check
 bun run build
 ```
 
-The browser checks need a running production server, Node.js 22+, Chromium, and an existing PDF in the library. `test:reader` also needs the `agent-browser` CLI. They use a disposable browser profile and do not upload or delete library files.
+For a reproducible browser suite after building:
+
+```sh
+bun run test:browser
+```
+
+It creates a synthetic library and its own production server, verifies original fixture bytes, then cleans up. It needs Node.js 22+, Chromium and the `agent-browser` CLI. A prebuilt test index avoids model downloads; it does not test real-model retrieval quality.
+
+The external-server checks below use an existing PDF and disposable browser profiles. They do not upload or delete library files. Supply IDs explicitly for a benchmark; the default base URL is `http://127.0.0.1:3100` for all checks.
 
 ```sh
 # Terminal 1
