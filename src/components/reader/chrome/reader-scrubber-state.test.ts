@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { beginScrub, chapterMarkers, finishScrub, previewScrub } from "./reader-scrubber-state";
-import { activeChapter } from "../navigation/reader-outline";
 
 test("reader-scrubber accepts a drag only once, with no commits during preview", () => {
   let session = beginScrub(1, 419);
@@ -26,15 +25,6 @@ test("reader-scrubber keyboard sessions clamp endpoints and can commit independe
   const home = previewScrub(beginScrub(419, 419), -1, 419);
   assert.equal(finishScrub(home, true).page, 1);
   assert.equal(beginScrub(NaN, 419).draft, 1);
-});
-
-test("chapter labels use the closest preceding destination in both the scrubber and the sidebar", () => {
-  const outline = [{ title: "External", page: null }, { title: "Second", page: 20 }, { title: "First", page: 3 }];
-  const title = (page: number) => activeChapter(outline, page)?.title ?? null;
-  assert.equal(title(1), null);
-  assert.equal(title(19), "First");
-  assert.equal(title(20), "Second");
-  assert.equal(activeChapter(null, 20), null);
 });
 
 test("reader-scrubber chapter markers are unique, finite and bounded even for huge outlines", () => {

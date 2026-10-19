@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { resolveOutline } from "./reader-outline";
+import { activeChapter, resolveOutline } from "./reader-outline";
 
 function fakePdf() {
   const destinations: Record<string, unknown> = {
@@ -48,6 +48,15 @@ test("resolveOutline resolves string and ref destinations, urls, and broken entr
   assert.equal(entries[4].page, null, "broken destination does not throw");
   assert.equal(entries[5].page, null, "broken destination does not throw");
   assert.equal(entries[6].page, null, "broken page index does not throw");
+});
+
+test("chapter labels use the closest preceding destination in both the scrubber and the sidebar", () => {
+  const outline = [{ title: "External", page: null }, { title: "Second", page: 20 }, { title: "First", page: 3 }];
+  const title = (page: number) => activeChapter(outline, page)?.title ?? null;
+  assert.equal(title(1), null);
+  assert.equal(title(19), "First");
+  assert.equal(title(20), "Second");
+  assert.equal(activeChapter(null, 20), null);
 });
 
 test("resolveOutline supports cancellation", async () => {

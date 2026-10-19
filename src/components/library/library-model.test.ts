@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { PdfItem } from "@/types/pdf";
-import { displayName } from "@/lib/pdf-title";
 import {
   coverSrc, formatBytes, formatDate, isFinished, mergeUploadedItems,
   parseLibraryProgress, progressPercent, selectReadingItems, selectVisibleItems, uploadNotice, withoutCover,
@@ -10,14 +9,6 @@ import {
 function pdf(id: string, name = `${id}.pdf`): PdfItem {
   return { id, name, size: 1024, mimeType: "application/pdf", createdAt: "2026-01-01T00:00:00Z" };
 }
-
-test("display titles clean filenames without rewriting intentional capitalization", () => {
-  assert.equal(displayName("the_art-of_reading.PDF"), "The Art of Reading");
-  assert.equal(displayName("NASA_handbook.pdf"), "NASA handbook");
-  assert.equal(displayName("  a___quiet--page.pdf"), "A Quiet Page");
-  assert.equal(displayName(".pdf"), ".pdf");
-  assert.equal(displayName(""), "");
-});
 
 test("metadata formatting keeps byte thresholds and invalid-date fallback", () => {
   assert.equal(formatBytes(0), "0 B");
