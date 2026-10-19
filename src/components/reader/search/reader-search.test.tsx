@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ReaderSearchPanel, readerSearchStatus } from "./reader-search";
+import { ReaderSearchPanel, readerSearchStatus } from "./reader-search-panel";
 import { emptyReaderSearchState, highlightSearchText, readerSearchSnapshot } from "./reader-search-state";
 
 const noChange = () => {};

@@ -13,10 +13,6 @@ export function lowResourceDevice() {
   return Boolean((device.deviceMemory && device.deviceMemory <= 4) || device.connection?.saveData || /(^|-)2g$/.test(device.connection?.effectiveType ?? ""));
 }
 
-export function boundedMeasure(name: string, start: number) {
-  performance.clearMeasures(name); performance.measure(name, { start, end: performance.now() });
-}
-
 export function stagePosition(stage: HTMLElement, scroller: HTMLElement) {
   const box = stage.getBoundingClientRect(), scroll = scroller.getBoundingClientRect();
   return { top: box.top - scroll.top + scroller.scrollTop - scroller.clientTop,

@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Focus, Keyboard, Laptop, Maximize, Minimize, Moon, Sun, ZoomIn, ZoomOut } from "lucide-react";
-import { RadioChoices, ReaderDialog } from "./reader-controls";
+import { ReaderDialog } from "./reader-dialog";
+import { RadioChoices } from "./reader-radio-choices";
 import styles from "./reader-chrome.module.css";
 import type { ReaderLayout, ReaderPreferences, ViewMode } from "../reader-preferences";
 import { THEME_STORAGE_KEY, type Theme } from "@/components/theme";

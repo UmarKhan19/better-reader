@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, type RefObject } from "react";
 import { clampZoom } from "../reader-preferences";
 import { fraction, locationAt, type ReaderGeometry } from "./reader-geometry";
 import { distance, isInteractiveTarget, midpoint, wheelZoom, zoomRatio, type Point } from "./reader-gestures";
+import { markReader, READER_MARKS } from "./reader-performance";
 
 export type ZoomAnchor = { page: number; x: number; y: number; screen: Point };
 export function useReaderZoom({ scrollRef, stageRef, geometry, scale, navigationRevision, onCommit }: {
@@ -54,7 +55,7 @@ export function useReaderZoom({ scrollRef, stageRef, geometry, scale, navigation
       const startScale = gesture.scale;
       gesture = null;
       if (Math.abs(zoom - startScale) < 0.005) { stage.style.transform = ""; return; }
-      performance.clearMarks("reader:zoom-request"); performance.mark("reader:zoom-request");
+      markReader(READER_MARKS.zoomRequest);
       commit(zoom, anchor);
     };
     const wheel = (event: WheelEvent) => {

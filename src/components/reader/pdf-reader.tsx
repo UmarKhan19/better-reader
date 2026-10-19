@@ -1,31 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Document, pdfjs } from "react-pdf";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import Link from "next/link";
 import { AlertTriangle, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { clearStorageFailures, markStorageResult, storageBlockedSnapshot, subscribeStorageBlocked } from "@/lib/storage-health";
 import { THEME_STORAGE_KEY, useTheme, writeTheme } from "@/components/theme";
-import { KeyboardShortcuts, ReaderDialog } from "./chrome/reader-controls";
-import { ReaderHeader, ReaderMobileFooter } from "./chrome/reader-toolbar";
+import { ReaderDialog } from "./chrome/reader-dialog";
+import { KeyboardShortcuts } from "./chrome/reader-shortcuts";
+import { ReaderHeader } from "./chrome/reader-header";
+import { ReaderMobileFooter } from "./chrome/reader-mobile-footer";
 import { ReaderSettingsDialog } from "./chrome/reader-settings-dialog";
 import { useReaderKeyboard } from "./chrome/use-reader-keyboard";
 import { useReaderChrome } from "./chrome/use-reader-chrome";
 import { useReadingSession } from "./navigation/use-reading-session";
 import { ReaderViewport } from "./viewport/reader-viewport";
 import { optionsForPdfSize } from "./reader-load-options";
-import { ReaderSearchPanel, useReaderSearch } from "./search/reader-search";
+import { ReaderSearchPanel } from "./search/reader-search-panel";
+import { useReaderSearch } from "./search/use-reader-search";
 import { ReaderScrubber } from "./chrome/reader-scrubber";
 import { ReaderSidebar } from "./chrome/reader-sidebar";
-import { activeChapter, useReaderOutline } from "./navigation/reader-outline";
+import { activeChapter } from "./navigation/reader-outline";
+import { useReaderOutline } from "./navigation/use-reader-outline";
 import { clampZoom, paperPageColors } from "./reader-preferences";
 import { readingProgress } from "@/lib/reading-progress";
-import type { Size } from "./viewport/reader-geometry";
+import { usePdfDocument } from "./use-pdf-document";
+import { useViewerSize } from "./use-viewer-size";
+import { ReaderDocumentError, ReaderDocumentLoading } from "./reader-document-status";
 import styles from "./reader.module.css";
 import chromeStyles from "./chrome/reader-chrome.module.css";
 
@@ -44,28 +49,21 @@ function useMediaQuery(query: string) {
 type PdfReaderProps = { id: string; title: string; fileSize?: number };
 
 export function PdfReader({ id, title, fileSize }: PdfReaderProps) {
-  return <BookReader key={id} id={id} title={title} fileSize={fileSize} />;
-}
-
-function BookReader({ id, title, fileSize }: PdfReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLElement>(null);
-  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
+  const { pdf, attempt, loadError, firstPageReady, setFirstPageReady, onDocumentLoad: setDocument, onLoadError, retry } = usePdfDocument();
   const total = pdf?.numPages ?? null;
   const {
     reading, preferences, bookmarks, navigate, jump, goBack: back, observeLocation: onLocationChange,
     restore, toggleBookmark, updatePreferences, zoomBy: changeZoom, save,
   } = useReadingSession(id, total);
   const pageNumber = reading.location.page;
-  const [available, setAvailable] = useState<Size>({ width: 0, height: 0 });
+  const available = useViewerSize(viewerRef, pdf);
   const [effectiveScale, setEffectiveScale] = useState(1);
   const focusMode = preferences.focusMode;
   const pageColors = useMemo(() => paperPageColors(preferences.paper), [preferences.paper]);
-  const [firstPageReady, setFirstPageReady] = useState(false);
   const [busy, setBusy] = useState(true);
   const [query, setQuery] = useState("");
-  const [loadError, setLoadError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
   const desktop = useMediaQuery("(min-width: 1024px)");
   const coarsePointer = useMediaQuery("(pointer: coarse)");
   const onFocusModeChange = useCallback((focusMode: boolean) => updatePreferences({ focusMode }), [updatePreferences]);
@@ -83,26 +81,6 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
   const progress = total ? readingProgress(reading.location, total) : 0;
   const bookmarked = bookmarks.includes(pageNumber);
 
-  useEffect(() => {
-    const node = viewerRef.current;
-    if (!node) return;
-    let frame = 0;
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const css = getComputedStyle(node);
-        const width = Math.floor(node.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight));
-        const height = Math.floor(node.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom));
-        setAvailable((previous) => previous.width === width && previous.height === height
-          ? previous : { width, height });
-      });
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    measure();
-    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
-  }, [pdf]);
-
   // react-pdf's internal-link viewer retains its initial onItemClick callback.
   const latestJump = useRef(jump);
   useLayoutEffect(() => { latestJump.current = jump; }, [jump]);
@@ -114,7 +92,7 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
     back();
     if (!desktop) closeSidebar();
   }, [total, desktop, back, closeSidebar]);
-  const onReady = useCallback(() => setFirstPageReady(true), []);
+  const onReady = useCallback(() => setFirstPageReady(true), [setFirstPageReady]);
 
   const sidebarNavigate = useCallback((page: number) => {
     jump(page);
@@ -161,10 +139,8 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
 
   const onDocumentLoad = useCallback((document: PDFDocumentProxy) => {
     restore(document.numPages);
-    setFirstPageReady(false);
-    setPdf(document);
-    setLoadError(false);
-  }, [restore]);
+    setDocument(document);
+  }, [restore, setDocument]);
 
   const pageControls = { page: pageNumber, total, onNavigate: navigate, onSeek: jump, onMessage: showFeedback };
   const toggleCurrentBookmark = () => toggleBookmark(pageNumber);
@@ -225,20 +201,10 @@ function BookReader({ id, title, fileSize }: PdfReaderProps) {
       )}
 
       <Document key={attempt} className={styles.document} file={`/api/pdfs/${id}`} options={optionsForPdfSize(fileSize)} suspense={false}
-        onLoadSuccess={onDocumentLoad} onLoadError={() => setLoadError(true)}
+        onLoadSuccess={onDocumentLoad} onLoadError={onLoadError}
         onItemClick={onItemClick}
-        loading={<main className={styles.documentStatusMain}>
-          <div className={styles.documentStatus} role="status">
-            <div className={styles.loadingPage} aria-hidden="true"><span /><span /><span /><span /><span /></div>
-            <p>Opening your PDF…</p>
-          </div>
-        </main>}
-        error={<main className={styles.documentStatusMain}>
-          <div className={styles.documentStatus} role="alert"><p>{loadError ? "This PDF couldn't be opened." : "Unable to open this PDF."}</p>
-            <p>Try again, or return to your library.</p>
-            <Button variant="outline" size="touch" onClick={() => { setPdf(null); setAttempt((n) => n + 1); }}>Try again</Button>
-            <Link href="/" className={chromeStyles.textLink}>Back to library</Link></div>
-        </main>}>
+        loading={<ReaderDocumentLoading />}
+        error={<ReaderDocumentError loadError={loadError} onRetry={retry} />}>
         {sidebarOpen && desktop && <aside id="reader-sidebar" className={chromeStyles.sidebar} data-reader-sidebar>
           <div className={chromeStyles.sidebarHeading}><h2>Document navigation</h2>
             <Button variant="ghost" size="icon-touch" aria-label="Close document navigation" onClick={closeSidebar}><X /></Button>

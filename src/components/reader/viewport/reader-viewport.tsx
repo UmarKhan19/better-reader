@@ -10,7 +10,8 @@ import { ReaderRasterBudget } from "./reader-raster-budget";
 import { pageIntersection } from "./reader-render-window";
 import type { ReaderHighlightText } from "./reader-text-renderer";
 import { useReaderZoom } from "./reader-use-zoom";
-import { getPdfKey, lowResourceDevice, boundedMeasure } from "./reader-viewport-runtime";
+import { getPdfKey, lowResourceDevice } from "./reader-viewport-runtime";
+import { boundedMeasure, markReader, READER_MARKS } from "./reader-performance";
 import { useReaderScrollPlacement } from "./use-reader-scroll-placement";
 import { useReaderWindow } from "./use-reader-window";
 import styles from "./reader-viewport.module.css";
@@ -47,8 +48,8 @@ function ViewportDocument({ pdf, pageNumber, layout, viewMode, zoom, cropMargins
   const previousZoom = useRef({ zoom, viewMode });
   useLayoutEffect(() => {
     const previous = previousZoom.current;
-    if (firstReadableRef.current && (previous.zoom !== zoom || previous.viewMode !== viewMode) && !performance.getEntriesByName("reader:zoom-request").length) {
-      performance.clearMarks("reader:zoom-request"); performance.mark("reader:zoom-request");
+    if (firstReadableRef.current && (previous.zoom !== zoom || previous.viewMode !== viewMode) && !performance.getEntriesByName(READER_MARKS.zoomRequest).length) {
+      markReader(READER_MARKS.zoomRequest);
     }
     previousZoom.current = { zoom, viewMode };
   }, [zoom, viewMode]);
@@ -90,16 +91,16 @@ function ViewportDocument({ pdf, pageNumber, layout, viewMode, zoom, cropMargins
     if (!readable) return;
     if (!firstReadableRef.current) {
       firstReadableRef.current = true;
-      performance.clearMarks("reader:first-page"); performance.mark("reader:first-page"); notifyReady();
+      markReader(READER_MARKS.firstPage); notifyReady();
     }
     if (!settled) return;
     zoomAnchorRef.current = null;
-    const request = performance.getEntriesByName("reader:page-request").at(-1) as PerformanceMark | undefined;
+    const request = performance.getEntriesByName(READER_MARKS.pageRequest).at(-1) as PerformanceMark | undefined;
     if (request?.detail?.page === active) {
-      boundedMeasure("reader:page-turn", request.startTime); performance.clearMarks("reader:page-request");
+      boundedMeasure(READER_MARKS.pageTurn, request.startTime); performance.clearMarks(READER_MARKS.pageRequest);
     }
-    const zoomRequest = performance.getEntriesByName("reader:zoom-request").at(-1);
-    if (zoomRequest) { boundedMeasure("reader:zoom-settled", zoomRequest.startTime); performance.clearMarks("reader:zoom-request"); }
+    const zoomRequest = performance.getEntriesByName(READER_MARKS.zoomRequest).at(-1);
+    if (zoomRequest) { boundedMeasure(READER_MARKS.zoomSettled, zoomRequest.startTime); performance.clearMarks(READER_MARKS.zoomRequest); }
   }, [active, settled, readable, zoomAnchorRef]);
 
   // Prune unbounded maps. Stable keys keep the timers from rescheduling on every scroll frame.

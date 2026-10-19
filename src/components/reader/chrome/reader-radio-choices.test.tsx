@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
-import { RadioChoices } from "./reader-controls";
+import { RadioChoices } from "./reader-radio-choices";
 
 test("paper previews keep named, mutually exclusive radio controls and the saved selection", () => {
   const html = renderToStaticMarkup(<RadioChoices legend="Paper" presentation="paper" value="sepia"

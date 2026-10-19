@@ -1,28 +1,11 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useSyncExternalStore } from "react";
+import { useId, useRef } from "react";
 import { Search, X } from "lucide-react";
-import type { PDFDocumentProxy } from "pdfjs-dist";
-import {
-  readerSearchSnapshot, ReaderSearchController, SEARCH_LIMITS,
-} from "./reader-search-state";
+import { SEARCH_LIMITS } from "./reader-search-state";
 import type { ReaderSearchState } from "./reader-search-state";
+import { useReaderSearch } from "./use-reader-search";
 import styles from "./reader-search.module.css";
-
-export type { SearchResult, SearchTextContext } from "./reader-search-state";
-
-export function useReaderSearch(pdf: PDFDocumentProxy | null, query: string, enabled: boolean) {
-  const controller = useMemo(() => new ReaderSearchController(pdf), [pdf]);
-  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
-  useEffect(() => {
-    controller.search(query, enabled);
-    return controller.cancel;
-  }, [controller, query, enabled]);
-  useEffect(() => () => controller.dispose(), [controller]);
-
-  // Do not expose a previous query/PDF's results during the render before effect cleanup.
-  return readerSearchSnapshot(state, pdf ? query : "", enabled && Boolean(pdf));
-}
 
 export function readerSearchStatus(state: ReaderSearchState, query: string) {
   if (!query.trim()) return "Search this PDF's text. Image-only pages cannot be searched.";

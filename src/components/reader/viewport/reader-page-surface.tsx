@@ -1,97 +1,20 @@
 "use client";
 
-import { memo, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { pdfjs } from "react-pdf";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { Button } from "@/components/ui/button";
-import { ScheduledPdfPage, type ScheduledPdfPageProps } from "./reader-render-queue";
-import { ReaderRasterBudget, rasterPixels, type RasterReservation } from "./reader-raster-budget";
-import { readerRenderQueue, type RenderPriority } from "./reader-render-scheduler";
-import { renderedInkCrop, paperColor } from "./reader-crop";
-import { FULL_PAGE, type CropBox, type PageBox } from "./reader-geometry";
-import type { PdfPageColors } from "../reader-preferences";
-import { finishRaster, rasterFrame, requestRaster, type RasterFrame, type RasterState } from "./reader-render-state";
-import { visibleTiles, type ReaderTile, type VisibleRect } from "./reader-tiles";
+import { ScheduledPdfPage } from "./reader-render-queue";
+import { BudgetedRaster } from "./reader-budgeted-raster";
+import { Tile } from "./reader-tile";
+import { canvasCrop } from "./reader-crop-canvas";
+import type { ReaderRasterBudget } from "./reader-raster-budget";
+import { finishRaster, rasterFrame, requestRaster, type RasterState } from "./reader-render-state";
+import type { RenderPriority } from "./reader-render-scheduler";
+import { visibleTiles, type VisibleRect } from "./reader-tiles";
 import { pageTextRenderer, type ReaderHighlightText } from "./reader-text-renderer";
+import type { CropBox, PageBox } from "./reader-geometry";
+import type { PdfPageColors } from "../reader-preferences";
 import styles from "./reader-viewport.module.css";
-
-function BudgetedRaster({ frame, budget, retained, onPromoted, ...props }: ScheduledPdfPageProps & {
-  frame: RasterFrame; budget: ReaderRasterBudget; retained: boolean; onPromoted: () => void;
-}) {
-  const [permitted, setPermitted] = useState(false);
-  const reservation = useRef<RasterReservation | null>(null);
-  const promote = useEffectEvent(onPromoted);
-  useEffect(() => {
-    const ticket = budget.reserve(props.pageNumber!, rasterPixels(frame, frame.ratio), props.priority, retained,
-      () => setPermitted(true), () => promote());
-    reservation.current = ticket;
-    return () => { ticket.cancel(); reservation.current = null; };
-    // Priority/presentation update the live reservation without losing its canvas.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, props.pageNumber, frame.key]);
-  useEffect(() => { reservation.current?.update(props.priority, retained); }, [props.priority, retained]);
-  const rendered = useCallback(() => reservation.current?.ready(), []);
-  return permitted ? <ScheduledPdfPage {...props} onRenderSuccess={rendered} /> : null;
-}
-
-function Tile({ pdf, pageNumber, fullWidth, tile, pageColors }: { pdf: PDFDocumentProxy; pageNumber: number; fullWidth: number; tile: ReaderTile; pageColors?: PdfPageColors }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const [ready, setReady] = useState(false);
-  const { x, y, pixelWidth, pixelHeight, ratio } = tile;
-  useEffect(() => {
-    let cancelled = false;
-    let task: ReturnType<PDFPageProxy["render"]> | undefined;
-    const element = canvas.current;
-    const ticket = readerRenderQueue.schedule(0, () => {
-      void (async () => {
-        try {
-          const page = await pdf.getPage(pageNumber);
-          if (cancelled || !element) return;
-          element.width = pixelWidth; element.height = pixelHeight;
-          const natural = page.getViewport({ scale: 1 });
-          task = page.render({ canvas: element, viewport: page.getViewport({ scale: fullWidth / natural.width * ratio }),
-            transform: [1, 0, 0, 1, -x * ratio, -y * ratio], pageColors: pageColors ?? undefined });
-          await task.promise;
-          if (!cancelled) setReady(true);
-        } catch { /* The readable base stays in place if a tile fails or is cancelled. */ }
-        finally { ticket.release(); }
-      })();
-    });
-    return () => { cancelled = true; task?.cancel(); ticket.cancel(); if (element) { element.width = 0; element.height = 0; } };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdf, pageNumber, fullWidth, x, y, pixelWidth, pixelHeight, ratio, pageColors?.background, pageColors?.foreground]);
-  return <canvas ref={canvas} aria-hidden="true" data-reader-tile className={styles.tile}
-    style={{ left: tile.x, top: tile.y, width: tile.width, height: tile.height, visibility: ready ? "visible" : "hidden" }} />;
-}
-
-async function canvasCrop(canvas: HTMLCanvasElement, page: PDFPageProxy, paperHex?: string | null): Promise<CropBox> {
-  let sample: HTMLCanvasElement | undefined;
-  try {
-    const [annotations, operators] = await Promise.all([page.getAnnotations({ intent: "display" }), page.getOperatorList()]);
-    const imageOps = [pdfjs.OPS.paintImageXObject, pdfjs.OPS.paintInlineImageXObject, pdfjs.OPS.paintInlineImageXObjectGroup,
-      pdfjs.OPS.paintImageXObjectRepeat, pdfjs.OPS.paintImageMaskXObject, pdfjs.OPS.paintImageMaskXObjectGroup,
-      pdfjs.OPS.paintImageMaskXObjectRepeat, pdfjs.OPS.paintSolidColorImageMask];
-    const hasImages = operators.fnArray.some((op) => imageOps.includes(op));
-    if (!canvas.width || !canvas.height || !canvas.isConnected) return FULL_PAGE;
-    const viewport = page.getViewport({ scale: 1 });
-    const boxes: CropBox[] = [];
-    for (const annotation of annotations) {
-      if (!Array.isArray(annotation.rect) || annotation.rect.length !== 4) return FULL_PAGE;
-      const rect = [...viewport.convertToViewportPoint(annotation.rect[0], annotation.rect[1]),
-        ...viewport.convertToViewportPoint(annotation.rect[2], annotation.rect[3])];
-      boxes.push({ x: Math.min(rect[0], rect[2]) / viewport.width, y: Math.min(rect[1], rect[3]) / viewport.height,
-        width: Math.abs(rect[2] - rect[0]) / viewport.width, height: Math.abs(rect[3] - rect[1]) / viewport.height });
-    }
-    sample = document.createElement("canvas");
-    const ratio = Math.min(256 / canvas.width, 256 / canvas.height, 1);
-    sample.width = Math.max(1, Math.round(canvas.width * ratio)); sample.height = Math.max(1, Math.round(canvas.height * ratio));
-    const context = sample.getContext("2d", { willReadFrequently: true });
-    if (!context) return FULL_PAGE;
-    context.drawImage(canvas, 0, 0, sample.width, sample.height);
-    return renderedInkCrop(context.getImageData(0, 0, sample.width, sample.height).data, sample.width, sample.height, boxes, hasImages, paperColor(paperHex));
-  } catch { return FULL_PAGE; }
-  finally { if (sample) { sample.width = 0; sample.height = 0; } }
-}
 
 export const ReaderPageSurface = memo(function ReaderPageSurface({ pdf, box, ratio, priority, visible, tileLimit, crop,
   highlightText, pageColors, onCrop, onStatus, onSize, sizeKnown, budget, presentation = "visible" }: {

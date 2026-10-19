@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { readStorage, storageKey, writeStorage } from "@/lib/browser-storage";
 import { clampPage, createProgressWriter, parseReadingLocation, progressStorageKey, type ReadingLocation } from "@/lib/reading-progress";
 import { clampZoom, parseBookmarks, parsePreferences, type ReaderPreferences } from "../reader-preferences";
+import { markReader, READER_MARKS } from "../viewport/reader-performance";
 import { initialNavigation, readerNavigationReducer } from "./reader-navigation";
 
 /** One keyed book lifetime owns navigation and persisted state, including hidden-page flushes. */
@@ -33,16 +34,14 @@ export function useReadingSession(id: string, total: number | null) {
   const requestNavigation = useCallback((page: number, remember = false) => {
     if (!total || !Number.isFinite(page)) return;
     const next = clampPage(page, total);
-    performance.clearMarks("reader:page-request");
-    performance.mark("reader:page-request", { detail: { page: next } });
+    markReader(READER_MARKS.pageRequest, { page: next });
     dispatch({ type: "jump", location: { page: next, offset: 0 }, total, remember });
   }, [total]);
   const navigate = useCallback((page: number) => requestNavigation(page), [requestNavigation]);
   const jump = useCallback((page: number) => requestNavigation(page, true), [requestNavigation]);
   const goBack = useCallback(() => {
     if (!total) return;
-    performance.clearMarks("reader:page-request");
-    performance.mark("reader:page-request");
+    markReader(READER_MARKS.pageRequest);
     dispatch({ type: "back", total });
   }, [total]);
   const observeLocation = useCallback((location: ReadingLocation) => {
