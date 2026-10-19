@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { forbiddenHost } from "@/lib/server/http/host-guard";
+import { forbiddenHost, serveFile } from "@/lib/server/http";
 import { isValidPdfId, pdfFilePath, deletePdf, restorePdf } from "@/lib/server/pdf-store";
-import { serveFile } from "@/lib/server/http/serve-file";
 import { queueBookIndex } from "@/lib/server/book-index";
 import type { ApiError, OkResponse, PdfMutationResponse } from "@/types/api";
 

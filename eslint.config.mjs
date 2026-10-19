@@ -8,6 +8,7 @@ import { plugin as shadcn } from "@shadcn/lint";
 import { pureModules } from "./scripts/lib/import-policy.mjs";
 
 const sourceRoot = fileURLToPath(new URL("./src/", import.meta.url));
+const projectRoot = fileURLToPath(new URL("./", import.meta.url));
 const modulePath = (file) => file.replace(/\.[cm]?[jt]sx?$/, "");
 const within = (file, directory) => file === directory || file.startsWith(`${directory}/`);
 const pureModuleSet = new Set(pureModules);
@@ -18,6 +19,8 @@ const ownershipImports = {
     messages: {
       browser: "Keep Node and server modules out of browser/shared code. Use an HTTP route instead.",
       store: "Use the public pdf-store Interface; only the store owns its paths and mutation lock.",
+      http: "Use the http module's root exports; only the module owns its subpaths.",
+      bookIndex: "Use the book-index root exports; only the module owns its subpaths.",
       library: "Library code may use reader-preload, not reader internals.",
       reader: "Reader code must not depend on the library UI.",
       pure: "Keep data, geometry and scheduling independent of React UI and hooks.",
@@ -25,6 +28,7 @@ const ownershipImports = {
   },
   create(context) {
     const file = relative(sourceRoot, context.filename).split(sep).join("/");
+    const fileFromRoot = relative(projectRoot, context.filename).split(sep).join("/");
     const browser = within(file, "components") || /^lib\/[^/]+$/.test(file);
     const pure = pureModuleSet.has(modulePath(file));
     function checkImport(node) {
@@ -39,6 +43,13 @@ const ownershipImports = {
       } else if (!within(file, "lib/server/pdf-store") && within(target, "lib/server/pdf-store")
         && target !== "lib/server/pdf-store" && target !== "lib/server/pdf-store/index") {
         messageId = "store";
+      } else if (!within(file, "lib/server/http") && within(target, "lib/server/http")
+        && target !== "lib/server/http" && target !== "lib/server/http/index") {
+        messageId = "http";
+      } else if (!within(file, "lib/server/book-index") && within(target, "lib/server/book-index")
+        && target !== "lib/server/book-index" && target !== "lib/server/book-index/index"
+        && !within(fileFromRoot, "tests") && !within(fileFromRoot, "scripts")) {
+        messageId = "bookIndex";
       } else if (within(file, "components/library") && within(target, "components/reader")
         && target !== "components/reader/reader-preload") {
         messageId = "library";

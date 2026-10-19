@@ -71,7 +71,7 @@ ESLint checks static imports, re-exports and literal dynamic imports:
 - Library code can import `reader-preload`, not reader internals.
 - Reader code stays independent of library internals.
 - Progress, preferences, navigation/UI state, geometry and scheduling stay independent of React UI/hooks. The pure-module list lives in `scripts/lib/import-policy.mjs`, shared by ESLint and `scripts/import-rules.test.mjs`; add new pure modules there.
-- Callers outside `pdf-store/` use its root or `index.ts` exports. Every other subpath is private, including newly added files.
+- Callers outside `pdf-store/` use its root or `index.ts` exports; callers outside `lib/server/http/` use `@/lib/server/http` and callers outside `lib/server/book-index/` use `@/lib/server/book-index`. Every subpath is private except from its own directory and tests, including newly added files.
 
 The checker resolves static imports, re-exports and literal dynamic imports. Computed module names and `require()` still need review.
 

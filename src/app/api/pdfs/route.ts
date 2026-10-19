@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isPdf } from "@/lib/pdf-file";
-import { forbiddenHost } from "@/lib/server/http/host-guard";
+import { forbiddenHost } from "@/lib/server/http";
 import { listPdfs, savePdf } from "@/lib/server/pdf-store";
 import { queueBookIndex } from "@/lib/server/book-index";
 import type { ApiError, PdfListResponse } from "@/types/api";

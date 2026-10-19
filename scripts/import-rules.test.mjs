@@ -101,6 +101,71 @@ test("the existing disposable fixture and unit tests may reset private store sta
   await assertImports("src/lib/server/book-index/example.test.ts", ["../pdf-store/record"], true);
 });
 
+test("http subpaths are private to the module, which exposes only its root", async () => {
+  for (const filePath of [
+    "src/app/api/pdfs/example.ts",
+    "src/components/reader/chrome/use-reader-chrome.ts",
+    "src/lib/server/book-index/example.ts",
+    "src/lib/another-owner/example.ts",
+    "scripts/example.mjs",
+  ]) await assertImports(filePath, [
+    "@/lib/server/http/host-guard",
+    "@/lib/server/http/serve-file",
+    "@/lib/server/http/pdf-http",
+    "@/lib/server/http/future.mjs",
+    "@/lib/server/http/nested/future",
+    "@/lib/server/http/index/private",
+  ], false);
+
+  for (const [filePath, source] of [
+    ["src/app/api/pdfs/example.ts", "../../../lib/server/http/host-guard"],
+    ["src/lib/server/book-index/example.ts", "../http/serve-file"],
+    ["scripts/example.mjs", "../src/lib/server/http/host-guard"],
+  ]) await assertImports(filePath, [source], false);
+
+  await assertImports("src/app/api/pdfs/example.ts", [
+    "@/lib/server/http",
+    "@/lib/server/http/index",
+    "@/lib/server/http/index.ts",
+    "../../../lib/server/http",
+    "../../../lib/server/http/index",
+  ], true);
+  await assertImports("src/lib/server/http/serve-file.ts", ["@/lib/server/http/pdf-http", "./host-guard"], true);
+  await assertImports("src/app/api/pdfs/http.test.ts", ["@/lib/server/http/host-guard"], true);
+});
+
+test("book-index subpaths are private except for the tests and scripts fixtures", async () => {
+  for (const filePath of [
+    "src/app/api/pdfs/example.ts",
+    "src/components/reader/chrome/use-reader-chrome.ts",
+    "src/lib/server/http/example.mjs",
+    "src/lib/another-owner/example.ts",
+  ]) await assertImports(filePath, [
+    "@/lib/server/book-index/core.mjs",
+    "@/lib/server/book-index/worker-client",
+    "@/lib/server/book-index/protocol.mjs",
+    "@/lib/server/book-index/nested/future",
+  ], false);
+
+  for (const [filePath, source] of [
+    ["src/lib/server/http/example.mjs", "../book-index/core.mjs"],
+    ["src/app/api/pdfs/example.ts", "../../../lib/server/book-index/worker-client"],
+  ]) await assertImports(filePath, [source], false);
+
+  await assertImports("src/app/api/pdfs/example.ts", [
+    "@/lib/server/book-index",
+    "@/lib/server/book-index/index",
+    "../../../lib/server/book-index",
+  ], true);
+  await assertImports("src/lib/server/book-index/worker-client.ts", ["./protocol.mjs", "./core.mjs"], true);
+
+  // The .mjs fixtures build synthetic indexes and worker messages from the internals.
+  await assertImports("tests/fixtures/reader-library.mjs", ["../../src/lib/server/book-index/core.mjs"], true);
+  await assertImports("tests/helpers/another-helper.ts", ["../../src/lib/server/book-index/core.mjs"], true);
+  await assertImports("scripts/example.mjs", ["../src/lib/server/book-index/protocol.mjs"], true);
+  await assertImports("src/app/api/pdfs/book-index.test.ts", ["@/lib/server/book-index/worker-client"], true);
+});
+
 test("library code can use only the reader preload entry", async () => {
   await assertImports("src/components/library/example.ts", [
     "@/components/reader/reader-preload",
