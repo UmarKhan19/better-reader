@@ -1,145 +1,150 @@
 <!-- prettier-ignore -->
 <div align="center">
 
-<img src="./public/logo.png" alt="Better Reader logo" height="64" />
+<img src="./public/logo.png" alt="Better Reader logo" width="320" />
 
 # Better Reader
 
-_A personal PDF library and browser reader that remembers your place._
+_A self-hosted PDF library that remembers your place._
 
 [![Bun](https://img.shields.io/badge/Bun-1.3.14+-000?style=flat-square&logo=bun)](https://bun.sh)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-3c873a?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-bun%20test-2ea44f?style=flat-square)](#checks)
 
-[Features](#features) · [Getting started](#getting-started) · [Data and backups](#data-and-backups) · [Configuration](#configuration) · [Checks](#checks)
+[Features](#features) · [Quick start](#quick-start) · [Data and backups](#data-and-backups) · [Development](#development) · [Documentation](#documentation)
 
 </div>
 
-Better Reader is a self-hosted, single-user PDF library. Uploads stay on the server's disk, PDF.js reads them in your browser, and the original files are never rewritten. Reading progress, bookmarks, and per-book settings are saved in that browser.
+Better Reader is a single-user PDF library for desktop and mobile browsers. Upload PDFs, add cover art, and return to your saved reading position. Files stay on the server's disk and are never rewritten. Reading progress stays in your browser. No database or cloud API key is required.
 
 > [!WARNING]
-> Better Reader has no login. Anyone who can reach it can read, upload, or delete PDFs. Put it behind authentication before exposing it beyond a trusted machine or network. The Host guard helps block DNS-rebinding requests; it is not authentication.
+> There is no login. Anyone who can reach the app can read, upload, or delete PDFs. Keep it on a trusted machine or network, or put it behind an authenticated reverse proxy. The Host guard helps block DNS rebinding; it is not authentication.
+
+![Better Reader's poster-style library with a featured book and upload controls](./docs/screenshots/library.png)
+
+<details>
+<summary>See the desktop and mobile reader</summary>
+
+![Desktop reader with page controls, search, and chapter seeking](./docs/screenshots/reader.png)
+
+<img src="./docs/screenshots/reader-mobile.png" alt="Mobile reader with continuous pages and compact navigation" width="280" />
+
+</details>
 
 ## Features
 
-### Library
+### Your library
 
-- Upload multiple PDFs by file picker or drag-and-drop, with upload progress and per-file results.
-- Add, replace, or remove cover art. Books without covers get generated poster artwork.
-- Search by filename or displayed title; sort by recent or name.
-- Delete books with a 30-day undo window.
+- Upload multiple PDFs by file picker or drag-and-drop, with progress, per-file results, and retry for failed uploads.
+- Add or replace cover art, or use the generated poster artwork. Filter by filename or display title; sort by newest upload or name.
+- Resume books from the reading shelf. Delete with undo and a 30-day trash retention policy.
 
-### Reader
+### Your reader
 
-- Continuous scrolling by default, with optional single-page and desktop two-page spread layouts.
-- Resume fractional page position, bookmark pages, and keep layout, sizing, crop, and paper settings per book.
-- Search document text with highlighted results, browse the table of contents or thumbnails, and seek by chapter.
-- Pinch, double-tap, and Ctrl-wheel zoom; focus mode, fullscreen, and keyboard shortcuts.
-- Original, dimmed, sepia, and dark paper modes. Text search does not include OCR, so scanned image-only pages are not searchable.
+- Read with continuous scrolling, single pages, or a desktop two-page spread. Save layout, sizing, and paper preferences per book.
+- Return to your saved spot within a page, save bookmarks, and retrace jumps with location history.
+- Search text with highlighted results, browse contents or page thumbnails, and seek by chapter. OCR is not included, so image-only pages are not searchable.
+- Pinch, double-tap, or Ctrl-wheel to zoom. Hide blank margins, enter focus mode or fullscreen, and navigate with keyboard shortcuts.
+- Choose light, dark, or system interface themes, with original, dimmed, sepia, or dark paper.
 
-### Performance
+Visible pages take priority over prefetch and previews, with bounded canvas allocations. PDFs up to 1 MiB stream normally; larger or unknown-size files load through on-demand byte ranges. See the [reader performance guide](./docs/reader-performance.md) for limits and measurement caveats.
 
-- PDFs up to 1 MiB use normal streaming. Larger or unknown-size files use on-demand byte ranges.
-- A shared render queue prioritizes visible pages over prefetch and thumbnails.
-- Raster memory is capped: 6 MP for shown base pages, 12 MP for physical base-page reservations, 3 MP per canvas, and up to 6 MP across six high-resolution tiles.
-- PDF responses support byte ranges, ETags, and conditional requests.
+## Quick start
 
-### Background embeddings
+Install [Bun 1.3.14+](https://bun.sh) and [Node.js 22+](https://nodejs.org). Node must be available as `node` for the background indexing worker. From the repository root:
 
-- Uploading or restoring a book queues server-side text extraction and local embeddings without waiting for them in the response. Existing books are checked on server startup.
-- One low-priority worker process handles one job at a time. MiniLM inference uses one CPU thread, not the Next.js request process.
-- Each book has its own 384-dimensional index. Passages target 150 words with 30-word overlap, stay within 256 model tokens, and retain the original PDF page number.
-- No chat UI or LLM calls are included. The server helper `searchBook(id, question)` in `src/lib/server/book-index/index.ts` returns up to ten passages with page numbers and scores, using 80% cosine similarity and 20% whole-word keyword matching. Questions must fit within 256 tokens and 2,000 characters. Future LLM callers should pass only these results as evidence.
-
-The first text-bearing book downloads the quantized `Xenova/all-MiniLM-L6-v2` model from Hugging Face into `data/ai/models/`. Later inference uses that disk cache. Book text and questions never leave the server. Image-only pages have no extractable text; OCR is not included.
-
-Index files are published atomically, so a partial build is never searchable. Failed jobs are logged on the server and retried on the next server startup or book restore. A worker crash does not stop uploads or reading; subsequent jobs start a new worker. Missing, corrupt, or outdated indexes are rebuilt. Interrupted builds restart from the beginning of the book.
-
-## Screenshots
-
-Captured from the app running locally on port 3000.
-
-### Library
-
-![Better Reader library with a featured book, continue-reading shelf, and poster grid](./docs/screenshots/library.png)
-
-### PDF reader
-
-![Desktop PDF reader showing a page, navigation controls, and chapter scrubber](./docs/screenshots/reader.png)
-
-![Mobile PDF reader with compact controls and page navigation](./docs/screenshots/reader-mobile.png)
-
-## Getting started
-
-Use Bun 1.3.14 or newer, or Node.js 22 or newer. The commands below use Bun; browser checks and benchmarks also need Node.js 22+.
-
-```sh
+```bash
 bun install
 bun run dev
 ```
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000). For a production build:
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000), choose **Upload**, and select a PDF. Click its cover to start reading.
 
-```sh
+To run a production build:
+
+```bash
 bun run build
 bun run start
 ```
 
-Both commands bind to `127.0.0.1` by default. To use the library from another device on your LAN, bind deliberately:
-
-```sh
-bun run start -- --hostname 0.0.0.0
-```
-
-> [!CAUTION]
-> This exposes the same library to your network. Only do this on a trusted network, and add proxy authentication if other people can reach the server.
-
-## Data and backups
-
-By default, the app stores its library under `data/` in the project directory:
-
-| Path | Contents |
-| --- | --- |
-| `data/uploads/` | Original PDFs, stored byte for byte |
-| `data/covers/` | Cover images |
-| `data/pdfs.json` | Library index |
-| `data/ai/<book-id>/index.json` | Derived text passages and embeddings for one book |
-| `data/ai/models/` | Downloaded MiniLM model cache |
-| `data/trash/pdfs/` and `data/trash/covers/` | Deleted files waiting for restore or purge |
-| `data/trash.json` | Deleted-book metadata |
-
-Copy `data/` to back up PDFs, covers, and the library index. Browser progress, bookmarks, theme, and reader settings are stored separately in `localStorage` and are not included in that backup. Expired trash is purged on a later delete or restore.
-
-AI indexes stay under `data/ai/<book-id>/` during the same 30-day trash window, but deleted books cannot be searched. Undo reuses the index, or queues a new build if one is missing. Purging an expired book also removes its AI directory, without removing the shared model cache. These indexes contain extracted book text, so protect them like the original PDFs. They can be regenerated from the PDFs if omitted from a backup.
+Both development and production servers bind to `127.0.0.1` by default. See [deployment](#deployment) for LAN access and hosting requirements.
 
 ## Configuration
 
-| Variable | Purpose |
+Defaults work for local use. Set these in `.env.local` or the server's environment, then restart the server:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BETTER_READER_DATA_DIR` | `./data` | Persistent library directory. Prefer an absolute path for deployment. |
+| `BETTER_READER_ALLOWED_HOSTS` | Localhost, private-network addresses, and `.local` names | Additional comma-separated hostnames, such as `books.example.com` behind a reverse proxy. This does not add authentication. |
+
+## Data and backups
+
+The server stores the following under `BETTER_READER_DATA_DIR`:
+
+| Path | Contents |
 | --- | --- |
-| `BETTER_READER_DATA_DIR` | Use a different persistent directory for the library. Defaults to `./data`. |
-| `BETTER_READER_ALLOWED_HOSTS` | Comma-separated Host names accepted by the API, such as `books.home.lan` behind a reverse proxy. This does not enable authentication. |
-| `READER_URL` | Base URL of the running server for browser checks and benchmarks. |
-| `READER_PDF_ID` | Existing PDF ID used by reader browser checks. |
-| `READER_PDF_IDS` | Comma-separated PDF IDs used by the benchmark. |
+| `uploads/` | Original PDF bytes |
+| `covers/` | Uploaded cover images |
+| `pdfs.json` | Library metadata |
+| `trash/pdfs/`, `trash/covers/`, `trash.json` | Deleted files and restore metadata |
+| `ai/<book-id>/index.json` | Extracted passages and embeddings for one book |
+| `ai/models/` | Downloaded embedding model cache |
 
-## Checks
+Stop the server before copying this directory for a consistent backup. Expired trash is purged on a later delete or restore. Deleted books retain their AI index until purge, but cannot return search evidence. Derived indexes can be regenerated; protect them like the PDFs because they contain extracted book text.
 
-`bun run check` runs typechecking, lint/import rules and unit tests. After `bun run build`, run the browser suite:
+> [!NOTE]
+> Progress, bookmarks, theme, and reader settings live in browser `localStorage`, not in the server backup. They are specific to that browser and site address, do not sync between devices, and are lost if you clear site storage. The PDF library remains on disk.
 
-```sh
-bun run test:browser
-```
+## How it works
 
-It owns its production server, synthetic library and browser profiles, and needs Node.js 22+, Chromium and the `agent-browser` CLI. Focused groups run with `bun run test:browser -- navigation` (or `search`, `rendering`, `gestures`, `library`). External-server reader checks and benchmarks use an existing PDF and a server you started. See [docs/architecture.md](docs/architecture.md#test-tiers) for the command matrix and [docs/reader-performance.md](docs/reader-performance.md) for benchmark options and measurement caveats.
+The Next.js and React app serves the library UI and HTTP API. PDF.js renders original documents in the browser through endpoints with byte ranges, ETags, and conditional requests. Filesystem mutations share a process-wide queue, and JSON metadata is published through temporary-file renames.
+
+### Background text indexing
+
+Uploads and restores queue text extraction and local embeddings in a separate, low-priority Node process. Startup checks existing books for missing, corrupt, or outdated indexes. Reading and uploads do not wait for indexing to finish.
+
+The first text-bearing book downloads the quantized `Xenova/all-MiniLM-L6-v2` model from Hugging Face into `ai/models/`. Inference then runs locally using the cache. Book text and questions are not sent to an external model service.
+
+This is separate from the reader's literal text search. There is no chat UI or LLM integration. The server-only [`searchBook(id, question)`](./src/lib/server/book-index/index.ts) helper returns up to ten passages with page numbers and scores. Questions are limited to 2,000 characters and 256 model tokens.
+
+Completed indexes are published atomically. Indexing failures are logged and retried on server startup or book restore; interrupted builds restart from the beginning. A worker crash does not stop reading or uploads.
 
 ## Deployment
 
-Better Reader needs one long-running server process and a persistent, writable disk. Run only one process against a given data directory because JSON mutations are serialized within a process, not across processes. Serverless hosts or deployments that discard local files are not suitable. If a reverse proxy uses a custom hostname, add it to `BETTER_READER_ALLOWED_HOSTS` and configure authentication at the proxy.
+- Run one long-running application server per data directory, with persistent, writable storage. The mutation queue does not coordinate multiple server instances. Serverless or ephemeral filesystems are not supported.
+- Keep `src/lib/server/book-index/*.mjs` and installed dependencies alongside the production build. The worker runs directly with Node, outside Next.js bundling. Start from the repository root.
+- For a custom proxy hostname, set `BETTER_READER_ALLOWED_HOSTS` and configure authentication at the proxy.
 
-## Architecture
+For access from another device on a trusted LAN, start the production server with:
 
-The Next.js app stores uploads on disk and serves original PDFs directly to PDF.js. The reader requests byte ranges as needed; it does not copy or rewrite a document to open it. For module ownership, change areas, invariants and test tiers, see [docs/architecture.md](docs/architecture.md). For rendering limits and measurement, see [docs/reader-performance.md](docs/reader-performance.md).
+```bash
+bun run start -- --hostname 0.0.0.0
+```
 
-Keep `src/lib/server/book-index/*.mjs` and installed dependencies alongside the production build. The worker runs those files directly with Node.js, outside Next.js bundling. Automated unit tests do not download models or launch automatic indexing workers.
+Then open `http://<server-lan-ip>:3000`. This exposes the same unauthenticated library to your network.
+
+## Development
+
+| Command | Purpose |
+| --- | --- |
+| `bun run check` | Route type generation, application/worker typechecking, lint, import rules, and unit tests |
+| `bun test` | Unit tests with disposable library storage |
+| `bun run test:coverage` | Unit tests with a coverage report |
+| `bun run build` | Production build |
+| `bun run test:browser` | Browser workflows against an isolated production server |
+
+Browser checks require a production build, Chromium, and the `agent-browser` CLI. Set `CHROME_BIN` if Chromium is not at `/usr/bin/chromium`. The suite owns its synthetic library and browser profiles, verifies original bytes afterward, and avoids model downloads.
+
+Run all groups with `bun run test:browser`, or select `navigation`, `search`, `rendering`, `gestures`, or `library`, for example `bun run test:browser -- search`.
+
+For external-server checks and benchmarks, use `READER_URL`, `READER_PDF_ID`, and `READER_PDF_IDS` as described in the [performance guide](./docs/reader-performance.md#run-the-checks). Synthetic browser checks do not establish real-device performance or embedding quality.
+
+## Documentation
+
+- [Architecture and change guide](./docs/architecture.md): module ownership, invariants, and focused checks.
+- [Reader performance](./docs/reader-performance.md): loading policy, allocation limits, and benchmarking.
+- [Product](./PRODUCT.md): supported behavior and constraints.
+- [Design](./DESIGN.md): library visuals, tokens, and shared controls.
+- [Domain terms](./CONTEXT.md): book, location, passage, and storage terminology.
