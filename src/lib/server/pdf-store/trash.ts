@@ -1,14 +1,14 @@
-import { readdir, rename, rm } from "node:fs/promises";
+import { rename, rm } from "node:fs/promises";
 import path from "node:path";
-import type { PdfItem } from "@/types/pdf";
+import type { StoredPdfRecord } from "./record";
 import * as storage from "./storage";
 import { serialized, fileExists, isValidPdfId, ensureDirs, AI_DIR, COVERS_DIR, TRASH_COVERS_DIR, TRASH_DIR, TRASH_FILE, TRASH_PDFS_DIR, UPLOADS_DIR } from "./storage";
 import { normalizeItem, readIndex, writeIndex } from "./index-store";
-import { invalidateCoverMap } from "./covers";
+import { findCoverFileName, invalidateCoverMap } from "./covers";
 
 const TRASH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-type TrashRecord = { item: PdfItem; deletedAt: string };
+type TrashRecord = { item: StoredPdfRecord; deletedAt: string };
 type StoredTrashRecord = { item: unknown; deletedAt: string };
 
 function isTrashRecord(value: unknown): value is StoredTrashRecord {
@@ -31,15 +31,6 @@ async function readTrash(): Promise<TrashRecord[]> {
 
 async function writeTrash(records: TrashRecord[]): Promise<void> {
   await storage.writeJson(TRASH_FILE, records);
-}
-
-async function findCoverFileName(dir: string, id: string): Promise<string | null> {
-  try {
-    const entries = await readdir(dir);
-    return entries.find((name) => name.startsWith(`${id}.`) && !name.toLowerCase().endsWith(".pdf")) ?? null;
-  } catch {
-    return null;
-  }
 }
 
 async function findStashedPdf(id: string): Promise<string | null> {
@@ -159,7 +150,7 @@ export async function deletePdf(id: string): Promise<boolean> {
   });
 }
 
-export async function restorePdf(id: string): Promise<PdfItem | null> {
+export async function restorePdf(id: string): Promise<StoredPdfRecord | null> {
   if (!isValidPdfId(id)) return null;
   await ensureDirs();
   return serialized(async () => {

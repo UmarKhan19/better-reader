@@ -1,7 +1,7 @@
 import { readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { PdfItem } from "@/types/pdf";
+import type { StoredPdfRecord } from "./record";
 import { COVERS_DIR, ensureDirs, fileExists, isValidPdfId, serialized } from "./storage";
 import { readIndex, writeIndex } from "./index-store";
 
@@ -32,7 +32,7 @@ export async function getCoverMap(): Promise<Map<string, string>> {
 
 const coverUrl = (id: string, version: string) => `/api/pdfs/${id}/cover?v=${encodeURIComponent(version)}`;
 
-export function applyCoverMetadata(item: PdfItem, fileName: string, version?: string): PdfItem {
+export function applyCoverMetadata(item: StoredPdfRecord, fileName: string, version?: string): StoredPdfRecord {
   const current = version ?? item.coverVersion ?? "1";
   const url = coverUrl(item.id, current);
   return {
@@ -44,7 +44,7 @@ export function applyCoverMetadata(item: PdfItem, fileName: string, version?: st
   };
 }
 
-export function clearCoverMetadata(item: PdfItem): PdfItem {
+export function clearCoverMetadata(item: StoredPdfRecord): StoredPdfRecord {
   return {
     ...item,
     hasCover: false,
@@ -75,7 +75,7 @@ export function imageExtension(data: Uint8Array): string | null {
   return IMAGE_SIGNATURES.find(({ matches }) => matches(data))?.extension ?? null;
 }
 
-async function findCoverFileName(dir: string, id: string): Promise<string | null> {
+export async function findCoverFileName(dir: string, id: string): Promise<string | null> {
   try {
     const entries = await readdir(dir);
     return entries.find((name) => name.startsWith(`${id}.`) && !name.toLowerCase().endsWith(".pdf")) ?? null;
@@ -85,10 +85,10 @@ async function findCoverFileName(dir: string, id: string): Promise<string | null
 }
 
 export type CoverSaveResult =
-  | { ok: true; item: PdfItem }
+  | { ok: true; item: StoredPdfRecord }
   | { ok: false; reason: "missing" | "unsupported" | "too-large" };
 
-export async function saveCoverToItem(item: PdfItem, data: Uint8Array, extension: string): Promise<PdfItem> {
+export async function saveCoverToItem(item: StoredPdfRecord, data: Uint8Array, extension: string): Promise<StoredPdfRecord> {
   const fileName = `${item.id}${extension}`;
   const previous = item.coverFileName ?? (await findCoverFileName(COVERS_DIR, item.id));
   await writeFile(path.join(COVERS_DIR, fileName), data);

@@ -5,15 +5,15 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { randomUUID } from "node:crypto";
-import type { PdfItem } from "@/types/pdf";
+import type { StoredPdfRecord } from "./record";
 import * as storage from "./storage";
-import { serialized, isValidPdfId, isPdfItem, INDEX_FILE, UPLOADS_DIR, ensureDirs } from "./storage";
+import { serialized, isValidPdfId, isStoredPdfRecord, INDEX_FILE, UPLOADS_DIR, ensureDirs } from "./storage";
 
 // Normalize a stored record to canonical cover fields only.
-export function normalizeItem(value: unknown): PdfItem | null {
-  if (!isPdfItem(value)) return null;
+export function normalizeItem(value: unknown): StoredPdfRecord | null {
+  if (!isStoredPdfRecord(value)) return null;
   const v = value as Record<string, unknown>;
-  const item: PdfItem = {
+  const item: StoredPdfRecord = {
     id: v.id as string,
     name: v.name as string,
     size: v.size as number,
@@ -27,10 +27,10 @@ export function normalizeItem(value: unknown): PdfItem | null {
   return item;
 }
 
-export async function readIndex(): Promise<PdfItem[]> {
+export async function readIndex(): Promise<StoredPdfRecord[]> {
   const parsed = await storage.readJson(INDEX_FILE);
   if (!Array.isArray(parsed)) return [];
-  const out: PdfItem[] = [];
+  const out: StoredPdfRecord[] = [];
   for (const entry of parsed) {
     const normalized = normalizeItem(entry);
     if (normalized) out.push(normalized);
@@ -38,11 +38,11 @@ export async function readIndex(): Promise<PdfItem[]> {
   return out;
 }
 
-export async function writeIndex(items: PdfItem[]): Promise<void> {
+export async function writeIndex(items: StoredPdfRecord[]): Promise<void> {
   await storage.writeJson(INDEX_FILE, items);
 }
 
-export async function findPdf(id: string): Promise<PdfItem | null> {
+export async function findPdf(id: string): Promise<StoredPdfRecord | null> {
   if (!isValidPdfId(id)) return null;
   const items = await readIndex();
   return items.find((item) => item.id === id) ?? null;
@@ -52,7 +52,7 @@ export function pdfFilePath(id: string): string {
   return path.join(UPLOADS_DIR, `${id}.pdf`);
 }
 
-export async function savePdf(body: ReadableStream<Uint8Array>, name: string): Promise<PdfItem> {
+export async function savePdf(body: ReadableStream<Uint8Array>, name: string): Promise<StoredPdfRecord> {
   await ensureDirs();
   const id = randomUUID();
   const file = path.join(UPLOADS_DIR, `${id}.pdf`);
@@ -62,7 +62,7 @@ export async function savePdf(body: ReadableStream<Uint8Array>, name: string): P
     await rm(file, { force: true });
     throw error;
   }
-  const item: PdfItem = {
+  const item: StoredPdfRecord = {
     id,
     name: name || `${id}.pdf`,
     size: (await stat(file)).size,

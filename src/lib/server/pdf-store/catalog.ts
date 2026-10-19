@@ -1,11 +1,11 @@
 import path from "node:path";
-import type { PdfItem } from "@/types/pdf";
+import type { StoredPdfRecord } from "./record";
 import { COVERS_DIR, ensureDirs, fileExists } from "./storage";
 import { readIndex } from "./index-store";
 import { applyCoverMetadata, clearCoverMetadata, getCoverMap } from "./covers";
 
 /** Cover enrichment sits above the raw index so cover mutations never form an import cycle. */
-export async function listPdfs(): Promise<PdfItem[]> {
+export async function listPdfs(): Promise<StoredPdfRecord[]> {
   await ensureDirs();
   const items = await readIndex();
   const coverByOwner = await getCoverMap();

@@ -135,6 +135,38 @@ test("cover metadata is canonical only", async () => {
   assert.equal(listed?.cover, undefined);
 });
 
+test("existing disk records preserve their JSON and cover fields through list, trash and restore", async () => {
+  const bytes = "%PDF-1.4\nold stored record\n%%EOF";
+  const item = await store.savePdf(...pdfUpload(bytes, "existing-format.pdf"));
+  const version = "old version/1";
+  const record = {
+    ...item,
+    hasCover: true,
+    coverUrl: `/api/pdfs/${item.id}/cover?v=${encodeURIComponent(version)}`,
+    coverFileName: `${item.id}.png`,
+    coverVersion: version,
+  };
+  const indexFile = path.join(dir, "data", "pdfs.json");
+  const indexJson = JSON.stringify([record], null, 2);
+  await writeFile(indexFile, indexJson);
+  await writeFile(path.join(dir, "data", "covers", record.coverFileName), PNG);
+
+  assert.deepEqual(await store.findPdf(item.id), record);
+  assert.deepEqual(await store.listPdfs(), [record]);
+  assert.equal(await store.deletePdf(item.id), true);
+  const trash = JSON.parse(await readFile(path.join(dir, "data", "trash.json"), "utf8")) as { item: unknown; deletedAt: string }[];
+  assert.equal(trash.length, 1);
+  assert.deepEqual(Object.keys(trash[0]), ["item", "deletedAt"]);
+  assert.deepEqual(trash[0].item, record);
+  assert.ok(Number.isFinite(Date.parse(trash[0].deletedAt)));
+
+  assert.deepEqual(await store.restorePdf(item.id), record);
+  assert.equal(await readFile(indexFile, "utf8"), indexJson);
+  assert.deepEqual(await store.listPdfs(), [record]);
+  assert.equal(await readFile(store.pdfFilePath(item.id), "utf8"), bytes);
+  assert.deepEqual(await readFile((await store.resolveCoverFilePath(item.id))!), PNG);
+});
+
 test("legacy cover aliases are normalized away on read and on the next write", async () => {
   const item = await store.savePdf(...pdfUpload(undefined, "legacy.pdf"));
   const indexFile = path.join(dir, "data", "pdfs.json");

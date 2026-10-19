@@ -56,7 +56,7 @@ export function coverSrc(item: PdfItem): string | undefined {
 
 export function withoutCover(item: PdfItem): PdfItem {
   return {
-    ...item, hasCover: false, coverUrl: undefined, coverFileName: undefined, coverVersion: undefined,
+    ...item, hasCover: false, coverUrl: undefined,
   };
 }
 

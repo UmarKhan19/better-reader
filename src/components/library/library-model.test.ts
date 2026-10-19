@@ -78,17 +78,14 @@ test("the reading shelf preserves library order and still includes finished titl
   }), [items[0], items[2]]);
 });
 
-test("cover resolution uses the canonical URL and removal clears cover metadata", () => {
-  const item = {
+test("cover resolution uses the canonical URL and removal clears public cover metadata", () => {
+  const item: PdfItem = {
     ...pdf("book"), hasCover: true, coverUrl: "/api/pdfs/book/cover?v=1",
-    coverFileName: "book.png", coverVersion: "1",
   };
   assert.equal(coverSrc(item), "/api/pdfs/book/cover?v=1");
   const removed = withoutCover(item);
   assert.equal(coverSrc(removed), undefined);
   assert.equal(removed.hasCover, false);
-  assert.equal(removed.coverFileName, undefined);
-  assert.equal(removed.coverVersion, undefined);
   assert.equal(removed.id, item.id);
   assert.equal(item.hasCover, true);
 });

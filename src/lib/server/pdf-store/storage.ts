@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { PdfItem } from "@/types/pdf";
+import type { StoredPdfRecord } from "./record";
 
 // Resolved at import time. Tests set BETTER_READER_DATA_DIR before importing the
 // store; production reads the repository's data folder. Keeping these as module
@@ -71,7 +71,7 @@ export async function fileExists(file: string): Promise<boolean> {
   }
 }
 
-export function isPdfItem(value: unknown): value is PdfItem {
+export function isStoredPdfRecord(value: unknown): value is StoredPdfRecord {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
