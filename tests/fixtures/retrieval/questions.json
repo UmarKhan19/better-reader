@@ -1,0 +1,1903 @@
+{
+  "version": 1,
+  "description": "Frozen local-library retrieval cases. Labels are AI-adjudicated (see docs/reports/retrieval-evaluation-2026-10-20.md), not human ground truth.",
+  "sourceIds": "Chunk ids are book-local production index ids (page-sequence).",
+  "labels": {
+    "author": "AI-curated questions and AI-adjudicated pooled judgments",
+    "humanGroundTruth": false,
+    "note": "Do not treat the answer summaries or accepted evidence as human-verified answers."
+  },
+  "books": [
+    {
+      "key": "building-bitcoin-in-rust",
+      "fileName": "Building bitcoin in Rust.pdf",
+      "sha256": "7d3716dbdd6394ff922b445dbbe459480ff33e4656ac87ee0f412530da70a809"
+    },
+    {
+      "key": "myth-of-sisyphus",
+      "fileName": "myth-of-sisyphus.pdf",
+      "sha256": "a6ba59d3783f0d9e172c874daf17b3fd2b638f7aba5a7c7249de1f2e9f67f714"
+    },
+    {
+      "key": "backend-development",
+      "fileName": "Backend Development.pdf",
+      "sha256": "3782d0d8801dd7d2a3148f179f778a921cbc130a072c8ccb0bac2ec7ad427d1e"
+    },
+    {
+      "key": "data-analysis-from-scratch-with-python",
+      "fileName": "Data_Analysis_From_Scratch_With_Python_Beginner_Guide_using_Python.pdf",
+      "sha256": "3b700a64a16c63ad6bfe5fd896435752490606cc40f7c2d338789d8f7a0d4e0e"
+    },
+    {
+      "key": "gray-hat-python",
+      "fileName": "Gray_hat_Python_Python_programming_for_hackers_and_reverse_PDFDrive.pdf",
+      "sha256": "6eb2d429418a7f62e67a242e64929693f743aa0d7db9e6d44d61f2c2d5eb0917"
+    },
+    {
+      "key": "web-development-with-node-and-express",
+      "fileName": "Web_Development_with_Node_Express.pdf",
+      "sha256": "1e2c394c484e3d30182355f74818b36014e40ff9eb1091296a0b204595a09916"
+    }
+  ],
+  "questions": [
+    {
+      "id": "a-btc-01",
+      "book": "building-bitcoin-in-rust",
+      "question": "What does Option::unwrap_or provide when an Option is None?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "It returns a supplied fallback value when the Option is None.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "194-2",
+              "page": 194,
+              "quote": "none_value.unwrap_or(\"Default value\")"
+            },
+            {
+              "id": "195-1",
+              "page": 195,
+              "quote": "The .unwrap_or() takes a value to substitute None with."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-02",
+      "book": "building-bitcoin-in-rust",
+      "question": "At what interval does this implementation recalculate mining difficulty?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "Every 50 blocks, as set by DIFFICULTY_UPDATE_INTERVAL.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "214-1",
+              "page": 214,
+              "quote": "pub const DIFFICULTY_UPDATE_INTERVAL: u64 = 50;"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-03",
+      "book": "building-bitcoin-in-rust",
+      "question": "How many satoshis are in one bitcoin according to the wallet conversion?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "100,000,000 satoshis.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "368-2",
+              "page": 368,
+              "quote": "sats as f64 / 100_000_000.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-04",
+      "book": "building-bitcoin-in-rust",
+      "question": "Why can Rust's Option be useful instead of representing a missing value with a null-like sentinel?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Option makes presence or absence explicit in the type, requiring code to handle the None case rather than treating absence as an ordinary value.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "193-1",
+              "page": 193,
+              "quote": "there is no concept of null to indicate the absence of value"
+            },
+            {
+              "id": "193-2",
+              "page": 193,
+              "quote": "we have to acknowledge the possibility of the value missing"
+            },
+            {
+              "id": "194-1",
+              "page": 194,
+              "quote": "none_value: Option<&str> = None"
+            },
+            {
+              "id": "194-2",
+              "page": 194,
+              "quote": "none_value.unwrap_or(\"Default value\")"
+            },
+            {
+              "id": "195-1",
+              "page": 195,
+              "quote": "The .unwrap_or() takes a value to substitute None with."
+            },
+            {
+              "id": "195-2",
+              "page": 195,
+              "quote": "the T in Option<T> implements the Default trait"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-05",
+      "book": "building-bitcoin-in-rust",
+      "question": "What happens when a transaction's inputs provide less value than its outputs?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "The implementation rejects it with BtcError::InvalidTransaction.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "210-2",
+              "page": 210,
+              "quote": "if input_value < output_value { return Err(BtcError::InvalidTransaction); }"
+            },
+            {
+              "id": "230-1",
+              "page": 230,
+              "quote": "if all_inputs < all_outputs { return Err(BtcError::InvalidTransaction); }"
+            },
+            {
+              "id": "246-1",
+              "page": 246,
+              "quote": "if all_inputs < all_outputs { print!(\"inputs are lower than outputs\"); return Err(BtcError::InvalidTransaction); }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-06",
+      "book": "building-bitcoin-in-rust",
+      "question": "How does the node avoid accepting two mempool transactions that claim the same spendable output?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "It tracks referenced UTXOs as used and rejects conflicting submissions; conflicting transactions are handled with a stated simplification.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "231-1",
+              "page": 231,
+              "quote": "Mark UTXOs that are being referenced by a transaction in mempool"
+            },
+            {
+              "id": "236-1",
+              "page": 236,
+              "quote": "detect and remove overlapping transactions"
+            },
+            {
+              "id": "238-1",
+              "page": 238,
+              "quote": "meaning this UTXO has already been marked by another transaction"
+            },
+            {
+              "id": "240-1",
+              "page": 240,
+              "quote": "self.mempool.remove(idx);"
+            },
+            {
+              "id": "244-2",
+              "page": 244,
+              "quote": "if let Some((true, _)) = self .utxos .get(&input.prev_transaction_output_hash)"
+            },
+            {
+              "id": "245-1",
+              "page": 245,
+              "quote": "let referencing_transaction = self.mempool"
+            },
+            {
+              "id": "246-2",
+              "page": 246,
+              "quote": "*marked = true;"
+            },
+            {
+              "id": "236-2",
+              "page": 236,
+              "quote": "if let Some((true, _)) = self .utxos .get(&input.prev_transaction_output_hash)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-07",
+      "book": "building-bitcoin-in-rust",
+      "question": "What does the miner do with a node-provided block template, and how does it learn whether that template is still valid?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "The node supplies a template; the miner mines it and asks the node to validate it, fetching another template when needed.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "278-1",
+              "page": 278,
+              "quote": "Miner talks to node so that it can assemble a block template"
+            },
+            {
+              "id": "280-1",
+              "page": 280,
+              "quote": "Ask the node to prepare the optimal block template"
+            },
+            {
+              "id": "298-1",
+              "page": 298,
+              "quote": "fetch and/or validate the template."
+            },
+            {
+              "id": "300-1",
+              "page": 300,
+              "quote": "If we are not mining, we fetch a template, if we are, we validate it."
+            },
+            {
+              "id": "301-2",
+              "page": 301,
+              "quote": "if !valid { println!(\"Current template is no longer valid\"); self.mining.store(false"
+            },
+            {
+              "id": "304-1",
+              "page": 304,
+              "quote": "if block.header.mine(2_000_000)"
+            },
+            {
+              "id": "305-1",
+              "page": 305,
+              "quote": "self.fetch_template().await?; } else { self.validate_template().await?;"
+            },
+            {
+              "id": "328-2",
+              "page": 328,
+              "quote": "let message = TemplateValidity(status);"
+            },
+            {
+              "id": "274-2",
+              "page": 274,
+              "quote": "Read block template file from the path specified by the first CLI argument ● Mine the block"
+            },
+            {
+              "id": "325-1",
+              "page": 325,
+              "quote": "These are messages that the node sends as a response to either a miner or the wallet."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-08",
+      "book": "building-bitcoin-in-rust",
+      "question": "How is a wallet payment assembled, and what does the wallet do when the selected outputs cannot cover it?",
+      "kind": "multi",
+      "answerable": true,
+      "answerSummary": "The wallet selects unmarked UTXOs until their value covers amount plus fee, builds inputs and recipient/change outputs; insufficient funds returns an error.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "359-2",
+              "page": 359,
+              "quote": "if *marked { continue; // Skip marked UTXOs }"
+            },
+            {
+              "id": "360-1",
+              "page": 360,
+              "quote": "if input_sum > total_amount { outputs.push(TransactionOutput { value: input_sum - total_amount"
+            },
+            {
+              "id": "360-2",
+              "page": 360,
+              "quote": "we make outputs for just the amount."
+            },
+            {
+              "id": "379-1",
+              "page": 379,
+              "quote": "let total_amount = amount + fee;"
+            },
+            {
+              "id": "381-1",
+              "page": 381,
+              "quote": "Ok(Transaction::new(inputs, outputs))"
+            }
+          ]
+        },
+        {
+          "chunks": [
+            {
+              "id": "360-1",
+              "page": 360,
+              "quote": "if input_sum < total_amount { return Err(anyhow::anyhow!(\"Insufficient funds\")); }"
+            },
+            {
+              "id": "380-2",
+              "page": 380,
+              "quote": "Insufficient funds: have {} satoshis, need {} satoshis"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-09",
+      "book": "building-bitcoin-in-rust",
+      "question": "Rust mein Option None ho to fallback value kaise milti hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "unwrap_or supplied fallback value deta hai jab Option None ho.",
+      "pairedWith": "a-btc-01",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "194-2",
+              "page": 194,
+              "quote": "none_value.unwrap_or(\"Default value\")"
+            },
+            {
+              "id": "195-1",
+              "page": 195,
+              "quote": "The .unwrap_or() takes a value to substitute None with."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-10",
+      "book": "building-bitcoin-in-rust",
+      "question": "Agar transaction ke inputs outputs se kam value dein, implementation kya karti hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Implementation transaction ko BtcError::InvalidTransaction ke saath reject karti hai.",
+      "pairedWith": "a-btc-05",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "210-2",
+              "page": 210,
+              "quote": "if input_value < output_value { return Err(BtcError::InvalidTransaction); }"
+            },
+            {
+              "id": "230-1",
+              "page": 230,
+              "quote": "if all_inputs < all_outputs { return Err(BtcError::InvalidTransaction); }"
+            },
+            {
+              "id": "246-1",
+              "page": 246,
+              "quote": "if all_inputs < all_outputs { print!(\"inputs are lower than outputs\"); return Err(BtcError::InvalidTransaction); }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-btc-11",
+      "book": "building-bitcoin-in-rust",
+      "question": "What exact ASIC model and hash rate does the book recommend for mining this project?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "The book implements CPU/threaded mining examples and discusses improvements, but gives no recommended ASIC model or purchase hash rate.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "a-btc-12",
+      "book": "building-bitcoin-in-rust",
+      "question": "Which exchange rate API does the wallet use to convert BTC balances into live US dollars?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "The wallet presents BTC and satoshi units; no live fiat conversion or exchange-rate API is specified.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "a-sis-01",
+      "book": "myth-of-sisyphus",
+      "question": "Between what two things does Camus say the absurd is born?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "The human need for meaning/reason and the world's unreasonable silence.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "1-2",
+              "page": 1,
+              "quote": "The absurd is born of this confrontation between the human need and the unreasonable silence of the world"
+            },
+            {
+              "id": "10-1",
+              "page": 10,
+              "quote": "The absurd is born of this confrontation between the human need and the unreasonable silence of the world."
+            },
+            {
+              "id": "10-6",
+              "page": 10,
+              "quote": "The absurd is essentially a divorce. It lies in neither of the elements compared; it is born of their confrontation."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-02",
+      "book": "myth-of-sisyphus",
+      "question": "What is the name Camus gives the movement of thought that negates itself and tries to transcend itself?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "Philosophical suicide.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "14-6",
+              "page": 14,
+              "quote": "calling the existential attitude philosophical suicide"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-03",
+      "book": "myth-of-sisyphus",
+      "question": "What does Camus say one must imagine Sisyphus to be?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "Happy.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "1-3",
+              "page": 1,
+              "quote": "One must imagine Sisyphus happy."
+            },
+            {
+              "id": "24-5",
+              "page": 24,
+              "quote": "One must imagine Sisyphus happy."
+            },
+            {
+              "id": "24-6",
+              "page": 24,
+              "quote": "One must imagine Sisyphus happy."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-04",
+      "book": "myth-of-sisyphus",
+      "question": "Why does Camus reject suicide as a resolution to the absurd?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Suicide ends the confrontation by ending the person; the absurd can only persist through awareness and rejection of death, not be settled by it.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "19-1",
+              "page": 19,
+              "quote": "In its way, suicide settles the absurd. It engulfs the absurd in the same death."
+            },
+            {
+              "id": "19-2",
+              "page": 19,
+              "quote": "It escapes suicide to the extent that it is simultaneously awareness and rejection of death."
+            },
+            {
+              "id": "19-4",
+              "page": 19,
+              "quote": "Suicide is a repudiation."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-05",
+      "book": "myth-of-sisyphus",
+      "question": "How does routine help trigger the first awareness of absurdity?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "A repetitive daily pattern can suddenly break into weariness or questioning, awakening consciousness to the strangeness of existence.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "5-1",
+              "page": 5,
+              "quote": "then it is as it were the first sign of absurdity"
+            },
+            {
+              "id": "5-2",
+              "page": 5,
+              "quote": "It awakens consciousness and provokes what follows."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-06",
+      "book": "myth-of-sisyphus",
+      "question": "What does Camus mean by choosing the most living rather than the best living?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "With no transcendent scale of values, the absurd stance favors maximizing conscious lived experience rather than ranking lives by an ideal quality.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "21-1",
+              "page": 21,
+              "quote": "substituting the quantity of experiences for the quality"
+            },
+            {
+              "id": "21-2",
+              "page": 21,
+              "quote": "what counts is not the best living but the most living"
+            },
+            {
+              "id": "21-3",
+              "page": 21,
+              "quote": "quantity and variety of experiences"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-07",
+      "book": "myth-of-sisyphus",
+      "question": "What makes Sisyphus superior to his punishment during the descent?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "His consciousness of the futile fate and rebellious lucidity make him stronger than the rock and fate.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "23-6",
+              "page": 23,
+              "quote": "he is superior to his fate. He is stronger than his rock."
+            },
+            {
+              "id": "23-7",
+              "page": 23,
+              "quote": "The lucidity that was to constitute his torture at the same time crowns his victory."
+            },
+            {
+              "id": "24-4",
+              "page": 24,
+              "quote": "he knows himself to be the master of his days"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-08",
+      "book": "myth-of-sisyphus",
+      "question": "How does revolt express the absurd person’s defiance, and what kind of freedom does the absurd restore?",
+      "kind": "multi",
+      "answerable": true,
+      "answerSummary": "Revolt is a passionate, day-to-day defiance; although the absurd cancels eternal freedom, it restores and magnifies freedom of action.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "19-4",
+              "page": 19,
+              "quote": "in that consciousness and in that day-to-day revolt he gives proof of his only truth, which is defiance"
+            },
+            {
+              "id": "18-3",
+              "page": 18,
+              "quote": "henceforth man enters in with his revolt and his lucidity"
+            }
+          ]
+        },
+        {
+          "chunks": [
+            {
+              "id": "19-7",
+              "page": 19,
+              "quote": "it restores and magnifies, on the other hand, my freedom of action"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-09",
+      "book": "myth-of-sisyphus",
+      "question": "Camus ke hisaab se absurdity kis takraav se paida hoti hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Insaan ki reason/meaning ki zaroorat aur duniya ki unreasonable khamoshi ke takraav se.",
+      "pairedWith": "a-sis-01",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "1-2",
+              "page": 1,
+              "quote": "The absurd is born of this confrontation between the human need and the unreasonable silence of the world"
+            },
+            {
+              "id": "10-1",
+              "page": 10,
+              "quote": "The absurd is born of this confrontation between the human need and the unreasonable silence of the world."
+            },
+            {
+              "id": "10-6",
+              "page": 10,
+              "quote": "The absurd is essentially a divorce. It lies in neither of the elements compared; it is born of their confrontation."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-10",
+      "book": "myth-of-sisyphus",
+      "question": "Sisyphus jab pahad se neeche laut raha hota hai, uski saza par uski jeet kis wajah se hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Apni bekaar, anant saza ki poori samajh aur baghawati chetna ke kaaran woh apni fate se upar uthta hai.",
+      "pairedWith": "a-sis-07",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "23-6",
+              "page": 23,
+              "quote": "he is superior to his fate. He is stronger than his rock."
+            },
+            {
+              "id": "23-7",
+              "page": 23,
+              "quote": "The lucidity that was to constitute his torture at the same time crowns his victory."
+            },
+            {
+              "id": "24-4",
+              "page": 24,
+              "quote": "he knows himself to be the master of his days"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-sis-11",
+      "book": "myth-of-sisyphus",
+      "question": "What was Camus's personal daily writing schedule while composing The Myth of Sisyphus?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "The text discusses routine as an existential example but does not provide Camus's personal writing schedule.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "a-sis-12",
+      "book": "myth-of-sisyphus",
+      "question": "Which exact year did Sisyphus first appear in Homer's original manuscript, and in which surviving archival copy?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "The essay recounts differing traditions about Sisyphus but supplies no manuscript date or archival-copy provenance.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "a-back-01",
+      "book": "backend-development",
+      "question": "Name one backend responsibility the lecture gives for protecting a system from user tampering.",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "Validation/security logic belongs in trusted backend code that users cannot bypass.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "4-1",
+              "page": 4,
+              "quote": "Validation, security, etc. that we don’t want to allow users to bypass"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-02",
+      "book": "backend-development",
+      "question": "What is Node.js, as defined in the lecture?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "A runtime that lets JavaScript run outside a browser.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "18-1",
+              "page": 18,
+              "quote": "Node.JS is a runtime that lets you run JS outside of a browser"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-03",
+      "book": "backend-development",
+      "question": "What file stores an NPM project's configuration?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "package.json.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "21-1",
+              "page": 21,
+              "quote": "Config is stored in json - specifically package.json"
+            },
+            {
+              "id": "22-1",
+              "page": 22,
+              "quote": "contains a special file, package.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-04",
+      "book": "backend-development",
+      "question": "Why should sensitive database writes go through the server rather than expose a private credential to browser code?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "The backend can use a private service credential without publishing it to clients; public database writes plus an exposed private key would compromise security.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "27-1",
+              "page": 27,
+              "quote": "Only allow writes through our node backend."
+            },
+            {
+              "id": "28-1",
+              "page": 28,
+              "quote": "a private key that you never publish publicly"
+            },
+            {
+              "id": "28-2",
+              "page": 28,
+              "quote": "Furnish a new private key and leave the Key type as JSON."
+            },
+            {
+              "id": "29-1",
+              "page": 29,
+              "quote": "allow writes from ONLY clients that have authenticated with a private key"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-05",
+      "book": "backend-development",
+      "question": "What tradeoff does the lecture identify when frontend code owns application logic?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "It can be responsive, but exposes logic to users, risks security/performance, and makes sharing logic across multiple front ends harder.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "6-1",
+              "page": 6,
+              "quote": "Frontend Pros Very responsive (low latency) Cons Security Performance Unable to share between front-ends"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-06",
+      "book": "backend-development",
+      "question": "How does a package manager solve the problem of applications relying on modules that are assumed to exist?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Modules are declared as dependencies in project configuration and the package manager retrieves/provides them to the application.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "20-1",
+              "page": 20,
+              "quote": "Configuration Declares what modules you need Package Manager Provides the modules to your app"
+            },
+            {
+              "id": "21-1",
+              "page": 21,
+              "quote": "Bring order to our modules and dependencies"
+            },
+            {
+              "id": "22-1",
+              "page": 22,
+              "quote": "This will download and install the modules on your machine given the existing config!"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-07",
+      "book": "backend-development",
+      "question": "How should an Express app expose static assets, and where in middleware order should that setup go?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Use express.static(...) with app.use, and declare it last.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "25-1",
+              "page": 25,
+              "quote": "app.use(express.static('myFileWithStaticFiles')); • Make sure to declare this *last*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-08",
+      "book": "backend-development",
+      "question": "How does the lecture's Firebase setup distinguish a backend from the browser, and what must remain secret?",
+      "kind": "multi",
+      "answerable": true,
+      "answerSummary": "The Node app uses a dedicated service-account credential distinct from the browser API key; the private key must not be published.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "28-1",
+              "page": 28,
+              "quote": "This key will distinguish our node app from the web app"
+            }
+          ]
+        },
+        {
+          "chunks": [
+            {
+              "id": "27-1",
+              "page": 27,
+              "quote": "make sure NOBODY has your private key"
+            },
+            {
+              "id": "28-1",
+              "page": 28,
+              "quote": "a private key that you never publish publicly"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-09",
+      "book": "backend-development",
+      "question": "App ko zaroori modules milte hain, yeh package manager kaise ensure karta hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Configuration mein modules dependencies ke taur par declare hote hain, aur package manager unhe app ke liye provide/download karta hai.",
+      "pairedWith": "a-back-06",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "20-1",
+              "page": 20,
+              "quote": "Configuration Declares what modules you need Package Manager Provides the modules to your app"
+            },
+            {
+              "id": "21-1",
+              "page": 21,
+              "quote": "Bring order to our modules and dependencies"
+            },
+            {
+              "id": "22-1",
+              "page": 22,
+              "quote": "This will download and install the modules on your machine given the existing config!"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-10",
+      "book": "backend-development",
+      "question": "Express mein static files serve karne ka tareeqa kya hai, aur yeh middleware list mein kahan aana chahiye?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "express.static ko app.use mein lagao aur is setup ko aakhir mein declare karo.",
+      "pairedWith": "a-back-07",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "25-1",
+              "page": 25,
+              "quote": "app.use(express.static('myFileWithStaticFiles')); • Make sure to declare this *last*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a-back-11",
+      "book": "backend-development",
+      "question": "What exact monthly cloud hosting price does the lecture recommend for deploying the class backend?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "These slides explain backend concepts and tooling but do not specify a recommended monthly hosting price.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "a-back-12",
+      "book": "backend-development",
+      "question": "Which database schema migration tool and version does the lecture require students to use?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "The lecture discusses Firebase and backend frameworks but does not name a required schema migration tool/version.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "b-data-01",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "What does CSV stand for, and how are the values in the file separated?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "CSV means comma-separated values; the values in different columns are separated by commas. The book calls it perhaps the most common data format in data science and machine learning.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "31-1",
+              "page": 31,
+              "quote": "CSV means comma-separated values. The values in different columns are separated by commas."
+            },
+            {
+              "id": "31-2",
+              "page": 31,
+              "quote": "CSV means comma-separated values. The values in different columns are separated by commas."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-02",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "What train/test split does the book describe as the usual division, and which argument sets it?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "80% training set and 20% test set, set with test_size = 0.2; the book notes that 70-30 or 60-40 are also used, and the same split is repeated in the 50_Startups regression walkthrough.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "33-1",
+              "page": 33,
+              "quote": "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)"
+            },
+            {
+              "id": "33-2",
+              "page": 33,
+              "quote": "The division is often 80% Training Set and 20% Test Set (test_size = 0.2)."
+            },
+            {
+              "id": "56-1",
+              "page": 56,
+              "quote": "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0) 80% Training Set, 20% Test Set."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-03",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "Which toolkit does the book use for natural language processing, and who developed it?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "The Natural Language Toolkit (NLTK), developed by Steven Bird and Edward Loper in the Department of Computer and Information Science at the University of Pennsylvania.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "99-3",
+              "page": 99,
+              "quote": "developed by Steven Bird and Edward Loper"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-04",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "Why might a model look excellent on the data it learned from but fail badly when new data arrives?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "With scarce or limited data the algorithm can overgeneralize: it fits the examples it has, shows excellent results on existing data, then fails spectacularly on new data. Gathering more data makes the learning more accurate.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "33-3",
+              "page": 33,
+              "quote": "it shows excellent results when we use our existing data, but it fails spectacularly when new data is used."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-05",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "Why does the book still recommend starting with Python even though R is described as designed for statisticians?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Python's general skills and concepts transfer easily to other languages, and Python is flexible because it goes beyond analysis into live, dynamic web applications. R may be better for statistics and visualization, but Python is the practical starting point.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "15-1",
+              "page": 15,
+              "quote": "Python is a good starting point and you may get a better understanding of data"
+            },
+            {
+              "id": "15-2",
+              "page": 15,
+              "quote": "just start with Python because the general skills and concepts are easily transferable to other languages"
+            },
+            {
+              "id": "15-3",
+              "page": 15,
+              "quote": "Python is somewhat flexible because it goes beyond data analysis"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-06",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "Why does averaging the output of many decision trees tend to reduce errors?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "A Random Forest averages the results of many trees, which can effectively reduce errors. The book also calls the result somewhat of a black box: straightforward code, complex mathematics underneath.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "58-2",
+              "page": 58,
+              "quote": "always good to get different results from different approaches (e.g. many decision trees) and then averaging those results"
+            },
+            {
+              "id": "61-1",
+              "page": 61,
+              "quote": "it averages results which can effectively reduce errors"
+            },
+            {
+              "id": "75-1",
+              "page": 75,
+              "quote": "Random Forest uses randomness and averaging different decision trees to come up with a more accurate model"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-07",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "How does the book describe grouping customers when there are no predefined categories or correct answers?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "This is unsupervised clustering: there are no labels and no truly correct answers, only acceptable groupings. The goal is to reveal organic aggregates in the data, such as customer groups by income and spending, and clustering can also expose outliers for anomaly detection.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "46-2",
+              "page": 46,
+              "quote": "we’re trying to discover where data points aggregate (e.g. are there natural clusters?)"
+            },
+            {
+              "id": "76-1",
+              "page": 76,
+              "quote": "the goal is to reveal organic aggregates or “clusters” in data"
+            },
+            {
+              "id": "76-2",
+              "page": 76,
+              "quote": "we’re “dividing” the dataset into groups wherein members have some similarities or proximities"
+            },
+            {
+              "id": "78-1",
+              "page": 78,
+              "quote": "we might subdivide the Customers in 5 distinct groups"
+            },
+            {
+              "id": "46-3",
+              "page": 46,
+              "quote": "Perhaps there are natural clusters or there are clear associations among the inputs."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-08",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "What two separate limits does the book place on a model's accuracy: one from the input and the people building it, and one from having too little data?",
+      "kind": "multi",
+      "answerable": true,
+      "answerSummary": "First, accuracy and performance depend heavily on the integrity of the data and the analyst's own skill and judgment. Second, scarce data can stop the system recognizing patterns and make it overgeneralize, so more data is recommended until the gain becomes negligible.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "26-3",
+              "page": 26,
+              "quote": "the accuracy and performance of our tools and models heavily depend on the integrity of data and our own skill and judgment."
+            },
+            {
+              "id": "31-1",
+              "page": 31,
+              "quote": "the accuracy of our analysis heavily depends on the quality of our data"
+            },
+            {
+              "id": "34-2",
+              "page": 34,
+              "quote": "computer and algorithm would be “learning from bad examples” which results to erroneous results"
+            },
+            {
+              "id": "93-1",
+              "page": 93,
+              "quote": "the accuracy of recognition heavily depend on the quality and quantity of our data"
+            }
+          ]
+        },
+        {
+          "chunks": [
+            {
+              "id": "33-3",
+              "page": 33,
+              "quote": "With scarce data, our system might fail to recognize patterns."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-09",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "Model apne purane data par shaandar result de raha hai lekin naya data aate hi fail ho jata hai — kitab ke hisaab se aisa kyun hota hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Kam ya seemit data par algorithm overgeneralize karta hai: jo examples usne dekhe hain un par bahut accha fit hota hai, lekin naye data par bilkul fail kar jata hai. Zyada data collect karne se learning zyada accurate hoti hai.",
+      "pairedWith": "b-data-04",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "33-3",
+              "page": 33,
+              "quote": "it shows excellent results when we use our existing data, but it fails spectacularly when new data is used."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-10",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "Bahut saare decision trees ke results ko average karne se error kam kyun ho jata hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Random Forest kai trees ke results ko average karta hai, jo errors ko effectively kam kar sakta hai. Kitab ise kuch had tak black box bhi kehti hai: code seedha lagta hai, andar complex maths hoti hai.",
+      "pairedWith": "b-data-06",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "58-2",
+              "page": 58,
+              "quote": "always good to get different results from different approaches (e.g. many decision trees) and then averaging those results"
+            },
+            {
+              "id": "61-1",
+              "page": 61,
+              "quote": "it averages results which can effectively reduce errors"
+            },
+            {
+              "id": "75-1",
+              "page": 75,
+              "quote": "Random Forest uses randomness and averaging different decision trees to come up with a more accurate model"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-data-11",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "How does the book handle missing values with KNN imputation before training a model?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "No chunk discusses missing-value handling or KNN imputation. The book covers K-Nearest Neighbors only as a classification algorithm; it never presents imputation or preprocessing for absent values.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "b-data-12",
+      "book": "data-analysis-from-scratch-with-python",
+      "question": "Which chapter shows how to deploy a trained model as a Flask REST API?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "The book has no Flask, API, deployment or production-serving material. It ends with analysis, NLP and a short further-topics list, so there is no chapter on turning a model into a web service.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "b-gray-01",
+      "book": "gray-hat-python",
+      "question": "What are the three primary breakpoint types the book lists?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "Soft breakpoints, hardware breakpoints and memory breakpoints. They behave similarly but are implemented in very different ways.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "40-4",
+              "page": 40,
+              "quote": "There are three primary breakpoint types: soft break- points, hardware breakpoints, and memory breakpoints."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-02",
+      "book": "gray-hat-python",
+      "question": "Which TCP port does an FTP server listen on by default?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "TCP port 21. The server receives commands from an FTP client on that port; the chapter then fuzzes USER and PASS over it.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "151-2",
+              "page": 151,
+              "quote": "By default an FTP server listens on TCP port 21"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-03",
+      "book": "gray-hat-python",
+      "question": "In danger_track.py, what constant caps the number of instructions logged after an access violation, and what value does it have?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "MAX_INSTRUCTIONS, set to 10. After a crash the script single-steps threads and logs at most ten instructions before stopping.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "88-1",
+              "page": 88,
+              "quote": "MAX_INSTRUCTIONS = 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-04",
+      "book": "gray-hat-python",
+      "question": "What advantage does opening a process give an analyst compared with attaching to a process that is already running?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Opening gives control before the process has a chance to run any code, which is useful for malware analysis. Attaching merely breaks into an already running process, letting the analyst skip startup and focus on specific code.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "48-1",
+              "page": 48,
+              "quote": "The advantage of opening a process is that you have control of the process before it has a chance to run any code."
+            },
+            {
+              "id": "51-1",
+              "page": 51,
+              "quote": "the process hasn’t painted it to the screen yet, because it is waiting for the debugger to continue execution."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-05",
+      "book": "gray-hat-python",
+      "question": "After the danger-tracking script hits a crash, how does it get back to the dangerous function so it can log what happened?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "It takes a process snapshot before the dangerous call, then on the access violation calls process_restore to return to that snapshot, flags every thread for single-stepping, logs up to ten instructions, and rewinds to the dangerous function that was called.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "87-3",
+              "page": 87,
+              "quote": "If there is an access violation, our script will rewind the process to the last dangerous function hit."
+            },
+            {
+              "id": "87-4",
+              "page": 87,
+              "quote": "From there it single-steps the target applica- tion and disassembles each instruction"
+            },
+            {
+              "id": "88-3",
+              "page": 88,
+              "quote": "dbg.process_snapshot()"
+            },
+            {
+              "id": "88-4",
+              "page": 88,
+              "quote": "# back to the last dangerous function that was called"
+            },
+            {
+              "id": "89-1",
+              "page": 89,
+              "quote": "dbg.process_restore()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-06",
+      "book": "gray-hat-python",
+      "question": "Why does describing a protocol's fields and lengths before fuzzing help find bugs?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "This is block-based fuzzing: the analyst describes the protocol or file-format skeleton and assigns lengths and datatypes to fields. The fuzzer then applies its internal test cases to that skeleton and has inside knowledge of the protocol, which makes it more effective.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "145-1",
+              "page": 145,
+              "quote": "assigning lengths and datatypes to fields that you wish to fuzz"
+            },
+            {
+              "id": "145-2",
+              "page": 145,
+              "quote": "the fuzzer gets inside knowledge beforehand about the protocol it is fuzzing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-07",
+      "book": "gray-hat-python",
+      "question": "What does the IDAPython plug-in give a reverse engineer access to?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "It gives Python scripts full access to the IDC scripting core, the IDA Plugin API and the regular Python modules, enabling automated analysis inside IDA Pro. It was released in 2004 by Gergely Erdelyi and Ero Carrera.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "175-1",
+              "page": 175,
+              "quote": "full access to the IDC scripting core, the IDA Plugin"
+            },
+            {
+              "id": "175-2",
+              "page": 175,
+              "quote": "API, and all of the regular modules that ship with Python."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-08",
+      "book": "gray-hat-python",
+      "question": "What does Sulley add beyond generating test cases, and which server does Chapter 9 use to demonstrate a full run?",
+      "kind": "multi",
+      "answerable": true,
+      "answerSummary": "Sulley adds packet capturing, extensive crash reporting and VMware automation, and can restart the target after a crash. The demonstration target is WarFTPD 1.65, which has a known stack overflow in the USER or PASS commands.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "145-1",
+              "page": 145,
+              "quote": "packet-capturing capabilities, extensive crash reporting, and VMWare automation"
+            }
+          ]
+        },
+        {
+          "chunks": [
+            {
+              "id": "151-1",
+              "page": 151,
+              "quote": "WarFTPD 1.65, which has a known stack overflow when passing in overly long values for the USER or PASS commands"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-09",
+      "book": "gray-hat-python",
+      "question": "Debugger mein process khud start karne ka, pehle se chal rahe process se attach karne par kya faayda hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Process ko khud start karne se uska koi code chalne se pehle control milta hai, jo malware analysis mein kaam aa sakta hai; attach karne se startup skip karke specific code par focus kar sakte hain.",
+      "pairedWith": "b-gray-04",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "48-1",
+              "page": 48,
+              "quote": "The advantage of opening a process is that you have control of the process before it has a chance to run any code."
+            },
+            {
+              "id": "51-1",
+              "page": 51,
+              "quote": "the process hasn’t painted it to the screen yet, because it is waiting for the debugger to continue execution."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-10",
+      "book": "gray-hat-python",
+      "question": "Protocol ke fields aur unki lengths pehle describe karne se fuzzer ko bug dhoondhne mein kya faayda hota hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Block-based fuzzing mein analyst protocol ka skeleton banata hai aur fields ko length aur datatype deta hai. Fuzzer apne internal test cases us skeleton par lagata hai aur protocol ke baare mein pehle se inside knowledge rakhta hai, isliye bugs dhoondhna zyada effective hota hai.",
+      "pairedWith": "b-gray-06",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "145-1",
+              "page": 145,
+              "quote": "assigning lengths and datatypes to fields that you wish to fuzz"
+            },
+            {
+              "id": "145-2",
+              "page": 145,
+              "quote": "the fuzzer gets inside knowledge beforehand about the protocol it is fuzzing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-gray-11",
+      "book": "gray-hat-python",
+      "question": "What does the book recommend for debugging 64-bit Windows targets with Python 3?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "There is no 64-bit or Python 3 coverage. The book targets 32-bit Windows and installs Python 2.5, so it gives no recommendation for 64-bit targets or a Python 3 debugger.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "b-gray-12",
+      "book": "gray-hat-python",
+      "question": "How does the book use Volatility to find injected code in a memory image?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "Volatility and memory-image forensics are never mentioned. The book's injection work is live-process DLL and code injection with PyDbg/Immunity, not offline memory-image analysis.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "b-web-01",
+      "book": "web-development-with-node-and-express",
+      "question": "Which three dimensions does the book use to break down quality in web development?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "Reach (market penetration), functionality (whether the site works as advertised) and usability (human-computer interaction, whether it is easy to use).",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "60-2",
+              "page": 60,
+              "quote": "quality can be broken down into three dimensions: Reach"
+            },
+            {
+              "id": "60-3",
+              "page": 60,
+              "quote": "Functionality Once people are visiting your site"
+            },
+            {
+              "id": "60-4",
+              "page": 60,
+              "quote": "Usability Where functionality is concerned with functional correctness"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-02",
+      "book": "web-development-with-node-and-express",
+      "question": "Which HTTP status code does the book recommend for the redirect after processing a form submission?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "303 (See Other). The book says using 302 for this is a misuse of its meaning; 303 was added in HTTP 1.1 and tells the browser to follow with GET.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "109-4",
+              "page": 109,
+              "quote": "you should use 303 instead."
+            },
+            {
+              "id": "110-1",
+              "page": 110,
+              "quote": "This is the recommended method for responding to a form submission request."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-03",
+      "book": "web-development-with-node-and-express",
+      "question": "Which ports are assumed for HTTP and HTTPS when the URL omits a port?",
+      "kind": "exact",
+      "answerable": true,
+      "answerSummary": "Port 80 for HTTP and port 443 for HTTPS. Otherwise the book advises using a port greater than 1023.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "76-1",
+              "page": 76,
+              "quote": "If you omit the port, port 80 is assumed for HTTP and 443 for HTTPS."
+            },
+            {
+              "id": "235-2",
+              "page": 235,
+              "quote": "there’s a standard port for HTTPS, 443"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-04",
+      "book": "web-development-with-node-and-express",
+      "question": "Why does the book describe Express as a framework that gets in your way less?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Express is a very minimal, extensible framework: you add functionality as needed instead of starting with a bloated project full of features you must carve away. That leaves room for your own ideas while still providing useful structure.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "25-1",
+              "page": 25,
+              "quote": "it gets in your way less, allowing you full expression of your ideas"
+            },
+            {
+              "id": "25-2",
+              "page": 25,
+              "quote": "allowing you to add what you need when you need it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-05",
+      "book": "web-development-with-node-and-express",
+      "question": "Why does the book prefer templates over building HTML inside client-side JavaScript?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Having JavaScript emit HTML creates problems: constant escaping concerns, lost syntax highlighting, harder-to-spot malformed markup and code that is hard for others to read. Templates let you write in the target language (HTML) while inserting dynamic data.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "89-3",
+              "page": 89,
+              "quote": "switching context is problematic"
+            },
+            {
+              "id": "90-1",
+              "page": 90,
+              "quote": "Having JavaScript emit HTML is fraught with problems"
+            },
+            {
+              "id": "90-2",
+              "page": 90,
+              "quote": "write in the target language, while at the same time providing the ability to insert dynamic data"
+            },
+            {
+              "id": "91-1",
+              "page": 91,
+              "quote": "avoid generating HTML with JavaScript except for the simplest cases."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-06",
+      "book": "web-development-with-node-and-express",
+      "question": "Why does the book recommend keeping session data on the server rather than storing everything in a cookie?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Cookie-based sessions put everything in the client's browser; the book only recommends that for small amounts of non-sensitive data that will not grow. Storing a unique identifier in the cookie and the rest on the server is the recommended approach, with memory stores as the entry-level server option.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "125-3",
+              "page": 125,
+              "quote": "everything you add to the session will be stored on the client’s browser, which is an approach I don’t recommend."
+            },
+            {
+              "id": "125-4",
+              "page": 125,
+              "quote": "If you would rather store session information on the server, which I recommend"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-07",
+      "book": "web-development-with-node-and-express",
+      "question": "Why is a self-generated certificate unsuitable for a public production site?",
+      "kind": "semantic",
+      "answerable": true,
+      "answerSummary": "Browsers trust only certificates issued by a known certificate authority, which establishes the chain of trust. A self-signed certificate is fine for development, testing or an intranet, but public visitors get alarming browser warnings.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "230-1",
+              "page": 230,
+              "quote": "Browsers include these trusted root certificates when you install a browser, and that’s what establishes the chain of trust between the CA and the browser."
+            },
+            {
+              "id": "230-2",
+              "page": 230,
+              "quote": "browsers will trust only certificates generated by a known CA"
+            },
+            {
+              "id": "230-3",
+              "page": 230,
+              "quote": "they would turn away in droves."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-08",
+      "book": "web-development-with-node-and-express",
+      "question": "What does the book's description of Express as minimal and unopinionated imply for organizing routes on a large site?",
+      "kind": "multi",
+      "answerable": true,
+      "answerSummary": "Because Express is minimal and extensible, structure is something you add rather than something the framework imposes. Consistent with that, the book says Express is not opinionated about route organization and offers guiding principles (such as named handlers and routes that are not mysterious) instead of one required layout.",
+      "pairedWith": null,
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "25-1",
+              "page": 25,
+              "quote": "you can add in different parts of Express functionality as needed"
+            }
+          ]
+        },
+        {
+          "chunks": [
+            {
+              "id": "185-3",
+              "page": 185,
+              "quote": "Express is not opinionated about how you organize your routes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-09",
+      "book": "web-development-with-node-and-express",
+      "question": "Express ko minimal framework kehne ka matlab kya hai — zarurat ke hisaab se cheezein kaise add hoti hain?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "Express bahut minimal aur extensible framework hai: aapko pehle se sab kuch bhari hui bloated project nahi milti, balki zarurat ke hisaab se functionality add hoti hai. Isse apne ideas ke liye jagah bachti hai aur framework aapke raaste mein kam aata hai.",
+      "pairedWith": "b-web-04",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "25-1",
+              "page": 25,
+              "quote": "it gets in your way less, allowing you full expression of your ideas"
+            },
+            {
+              "id": "25-2",
+              "page": 25,
+              "quote": "allowing you to add what you need when you need it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-10",
+      "book": "web-development-with-node-and-express",
+      "question": "JavaScript ke andar HTML banane ke bajaye templates use karne ki kya wajah batayi gayi hai?",
+      "kind": "hinglish",
+      "answerable": true,
+      "answerSummary": "JavaScript se HTML generate karne mein escaping, syntax highlighting, malformed markup aur readability ki problems aati hain. Templates mein aap seedha HTML likhte hain aur dynamic data insert karte hain, isliye code likhna, padhna aur maintain karna aasan rehta hai.",
+      "pairedWith": "b-web-05",
+      "evidenceGroups": [
+        {
+          "chunks": [
+            {
+              "id": "89-3",
+              "page": 89,
+              "quote": "switching context is problematic"
+            },
+            {
+              "id": "90-1",
+              "page": 90,
+              "quote": "Having JavaScript emit HTML is fraught with problems"
+            },
+            {
+              "id": "90-2",
+              "page": 90,
+              "quote": "write in the target language, while at the same time providing the ability to insert dynamic data"
+            },
+            {
+              "id": "91-1",
+              "page": 91,
+              "quote": "avoid generating HTML with JavaScript except for the simplest cases."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b-web-11",
+      "book": "web-development-with-node-and-express",
+      "question": "What does the book recommend for containerizing the app with Docker and orchestrating it on Kubernetes?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "Docker and Kubernetes are never mentioned. The production chapter covers execution environments, app clusters, multiple servers, monitoring and stress testing, but no containerization or orchestration workflow.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    },
+    {
+      "id": "b-web-12",
+      "book": "web-development-with-node-and-express",
+      "question": "How does the book implement real-time chat with WebSockets?",
+      "kind": "unanswerable",
+      "answerable": false,
+      "answerSummary": "There is no WebSocket coverage and no real-time chat implementation. The book covers AJAX forms and file uploads; its only mention of chat is an example of naming an upload directory, not a transport or chat feature.",
+      "pairedWith": null,
+      "evidenceGroups": []
+    }
+  ]
+}

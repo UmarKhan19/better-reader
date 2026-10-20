@@ -9,6 +9,7 @@
     "lint": "eslint --max-warnings=0",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
+    "eval:retrieval": "node scripts/evaluate-retrieval.mjs",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "check": "bun run typecheck && bun run lint && bun test",
     "test:browser": "node scripts/test-reader.mjs",
