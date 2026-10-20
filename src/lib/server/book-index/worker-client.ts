@@ -11,15 +11,41 @@ function spawnWorker(): ChildProcess {
 /** Serializes complete jobs, including publication, and replaces a failed worker on the next job. */
 export class BookIndexWorker {
   private child: ChildProcess | null = null;
-  private tail: Promise<unknown> = Promise.resolve();
+  private interactive: Array<() => void> = [];
+  private background: Array<() => void> = [];
+  private active = false;
+  private interactiveBurst = 0;
 
   constructor(private readonly spawn = spawnWorker, private readonly timeoutMs = 15 * 60_000) {}
 
-  schedule<T>(work: (run: (job: WorkerJob) => Promise<DoneReply>) => Promise<T>): Promise<T> {
-    // shortcut: retrieval shares this FIFO queue; prioritize questions when interactive AI is added.
-    const run = this.tail.then(() => work(this.runJob));
-    this.tail = run.catch(() => {});
-    return run;
+  schedule<T>(work: (run: (job: WorkerJob) => Promise<DoneReply>) => Promise<T>, priority: "background" | "interactive" = "background"): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const queue = priority === "interactive" ? this.interactive : this.background;
+      queue.push(() => {
+        void Promise.resolve().then(() => work(this.runJob)).then(resolve, reject).finally(() => {
+          this.active = false;
+          this.drain();
+        });
+      });
+      this.drain();
+    });
+  }
+
+  private drain() {
+    if (this.active) return;
+    let next: (() => void) | undefined;
+    if (this.background.length && (!this.interactive.length || this.interactiveBurst >= 4)) {
+      next = this.background.shift();
+      // Bound interactive bursts so a steady stream of questions cannot starve indexing.
+      this.interactiveBurst = 0;
+    } else if (this.interactive.length) {
+      next = this.interactive.shift();
+      this.interactiveBurst++;
+    }
+    if (next) {
+      this.active = true;
+      next();
+    }
   }
 
   private runJob = (job: WorkerJob): Promise<DoneReply> => new Promise((resolve, reject) => {
@@ -29,11 +55,11 @@ export class BookIndexWorker {
       this.child = child;
       child.once("exit", () => { if (this.child === child) this.child = null; });
       child.unref();
-      child.channel?.unref();
+      child.channel?.unref?.();
     }
     const worker = child;
     worker.ref();
-    worker.channel?.ref();
+    worker.channel?.ref?.();
     let settled = false;
     const timeout = () => fail(new Error("Book indexing worker timed out"));
     let timer = setTimeout(timeout, this.timeoutMs);
@@ -46,7 +72,7 @@ export class BookIndexWorker {
       worker.off("error", fail);
       worker.off("exit", onExit);
       worker.unref();
-      worker.channel?.unref();
+      worker.channel?.unref?.();
       if (error) reject(error);
       else resolve(reply!);
     };

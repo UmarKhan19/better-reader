@@ -26,7 +26,7 @@ test("complete jobs are FIFO, including publication, and a healthy worker is reu
   let publish!: () => void;
   const publishing = new Promise<void>((resolve) => { publish = resolve; });
   const first = queue.schedule(async (run) => { await run(job); await publishing; });
-  const second = queue.schedule((run) => run(job));
+  const second = queue.schedule((run) => run(job), "interactive");
   await tick();
   assert.equal(worker.jobs.length, 1);
   worker.emit("message", { type: "progress" });
@@ -41,6 +41,88 @@ test("complete jobs are FIFO, including publication, and a healthy worker is reu
   await second;
   assert.equal(spawned, 1);
   assert.equal(worker.listenerCount("message"), 0);
+});
+
+test("pending interactive work runs before background work, FIFO within each priority", async () => {
+  const worker = new FakeWorker();
+  const queue = new BookIndexWorker(() => child(worker));
+  const order: string[] = [];
+  const enqueue = (name: string, priority: "interactive" | "background") => queue.schedule(async (run) => {
+    order.push(name);
+    await run(job);
+  }, priority);
+  const first = enqueue("active", "background");
+  const bg1 = enqueue("bg1", "background");
+  const int1 = enqueue("int1", "interactive");
+  const int2 = enqueue("int2", "interactive");
+  const bg2 = enqueue("bg2", "background");
+  await tick();
+  for (let i = 0; i < 5; i++) {
+    worker.emit("message", done);
+    await tick();
+  }
+  await Promise.all([first, bg1, int1, int2, bg2]);
+  assert.deepEqual(order, ["active", "int1", "int2", "bg1", "bg2"]);
+});
+
+test("interactive burst limit serves waiting background work", async () => {
+  const worker = new FakeWorker();
+  const queue = new BookIndexWorker(() => child(worker));
+  const order: string[] = [];
+  const enqueue = (name: string, priority: "interactive" | "background") => queue.schedule(async (run) => {
+    order.push(name);
+    await run(job);
+  }, priority);
+  const jobs = [enqueue("active", "interactive"), enqueue("bg", "background"),
+    ...Array.from({ length: 5 }, (_, i) => enqueue(`int${i}`, "interactive"))];
+  await tick();
+  for (let i = 0; i < jobs.length; i++) { worker.emit("message", done); await tick(); }
+  await Promise.all(jobs);
+  assert.deepEqual(order, ["active", "int0", "int1", "int2", "bg", "int3", "int4"]);
+});
+
+test("a synchronous first callback throw rejects without poisoning later jobs", async () => {
+  const worker = new FakeWorker();
+  const queue = new BookIndexWorker(() => child(worker));
+  const unhandled: unknown[] = [];
+  const onUnhandled = (error: unknown) => unhandled.push(error);
+  process.on("unhandledRejection", onUnhandled);
+  try {
+    const failed = queue.schedule(() => { throw new Error("sync failure"); });
+    const next = queue.schedule((run) => run(job));
+    await assert.rejects(failed, /sync failure/);
+    await tick();
+    worker.emit("message", done);
+    await next;
+    await tick();
+    assert.deepEqual(unhandled, []);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
+});
+
+test("a queued synchronous callback throw rejects without blocking the following job", async () => {
+  const worker = new FakeWorker();
+  const queue = new BookIndexWorker(() => child(worker));
+  const unhandled: unknown[] = [];
+  const onUnhandled = (error: unknown) => unhandled.push(error);
+  process.on("unhandledRejection", onUnhandled);
+  try {
+    const active = queue.schedule((run) => run(job));
+    const failed = queue.schedule(() => { throw new Error("queued sync failure"); });
+    const next = queue.schedule((run) => run(job));
+    await tick();
+    worker.emit("message", done);
+    await active;
+    await assert.rejects(failed, /queued sync failure/);
+    await tick();
+    worker.emit("message", done);
+    await next;
+    await tick();
+    assert.deepEqual(unhandled, []);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
 });
 
 test("a worker exit rejects its job, then a later job starts a fresh worker", async () => {
@@ -84,7 +166,9 @@ test("a failed book does not require replacing a healthy process", async () => {
   await tick(); worker.emit("message", { type: "error", error: "bad PDF" });
   await rejected;
   const next = queue.schedule((run) => run({ ...job, kind: "search", question: "Evidence?" }));
-  await tick(); worker.emit("message", { type: "done", kind: "search", hits: [{ id: "1-1", page: 1, text: "Evidence", score: 1 }] });
+  await tick(); worker.emit("message", { type: "done", kind: "search", queries: ["Evidence?"],
+    hits: [{ id: "1-1", page: 1, text: "Evidence", score: 1, matches: [0], selectedIds: ["1-1"],
+      sources: [{ id: "1-1", page: 1, start: 0, end: 8 }] }] });
   assert.equal((await next).kind, "search");
   assert.equal(worker.killed, false);
 });
