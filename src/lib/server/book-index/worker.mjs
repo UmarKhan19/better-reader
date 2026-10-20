@@ -3,8 +3,10 @@
 import { access, readFile, writeFile } from "node:fs/promises";
 import { constants, setPriority } from "node:os";
 import { getDocumentProxy } from "unpdf";
-import { chunkPage, EMBEDDING_MODEL, INDEX_VERSION, isBookIndex, isEmbedding, MAX_TOKENS, rankChunks } from "./core.mjs";
+import { chunkPage, EMBEDDING_BATCH_SIZE, EMBEDDING_MODEL, EMBEDDING_REVISION, INDEX_VERSION, isEmbedding, MODEL_MAX_TOKENS, QUERY_PREFIX } from "./core.mjs";
+import { BookIndexCache } from "./index-cache.mjs";
 import { isWorkerJob } from "./protocol.mjs";
+import { planQueries, retrieveEvidence } from "./retrieval.mjs";
 
 /** @typedef {import('./protocol.mjs').WorkerJob} WorkerJob */
 /** @param {import('./protocol.mjs').WorkerReply} reply */
@@ -16,6 +18,7 @@ process.on("disconnect", () => process.exit(0));
 
 /** @type {import('@huggingface/transformers').FeatureExtractionPipeline | undefined} */
 let extractor;
+const indexes = new BookIndexCache();
 /** @param {string} cacheDir */
 async function getExtractor(cacheDir) {
   if (!extractor) {
@@ -23,29 +26,17 @@ async function getExtractor(cacheDir) {
     env.cacheDir = cacheDir;
     env.allowLocalModels = false;
     extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, {
-      device: "cpu", dtype: "q8",
+      revision: EMBEDDING_REVISION, device: "cpu", dtype: "q8",
       session_options: { intraOpNumThreads: 1, interOpNumThreads: 1 },
     });
-    // The exported tokenizer defaults to 512, but this sentence model was trained at 256.
-    extractor.tokenizer.config.model_max_length = MAX_TOKENS;
+    extractor.tokenizer.config.model_max_length = MODEL_MAX_TOKENS;
   }
   return extractor;
 }
 
-/** @param {string} file @param {string} bookId */
-async function readIndex(file, bookId) {
-  try {
-    const value = JSON.parse(await readFile(file, "utf8"));
-    return isBookIndex(value, bookId) ? value : null;
-  } catch (error) {
-    if ((error instanceof Error && "code" in error && error.code === "ENOENT") || error instanceof SyntaxError) return null;
-    throw error;
-  }
-}
-
 /** @param {WorkerJob & { kind: 'index' }} job */
 async function indexBook(job) {
-  if (await readIndex(job.indexFile, job.bookId)) return { indexed: false };
+  if (await indexes.read(job.indexFile, job.bookId)) return { indexed: false };
   const pdf = await getDocumentProxy(new Uint8Array(await readFile(job.pdfFile)), {
     maxImageSize: 16_777_216, verbosity: 0,
   });
@@ -61,10 +52,10 @@ async function indexBook(job) {
         if (!text.trim()) continue;
         const model = await getExtractor(job.cacheDir);
         const passages = chunkPage(text, pageNumber, (passage) => model.tokenizer.encode(passage).length);
-        for (let start = 0; start < passages.length; start += 4) {
+        for (let start = 0; start < passages.length; start += EMBEDDING_BATCH_SIZE) {
           await access(job.pdfFile);
-          const batch = passages.slice(start, start + 4);
-          const output = await model(batch.map((chunk) => chunk.text), { pooling: "mean", normalize: true });
+          const batch = passages.slice(start, start + EMBEDDING_BATCH_SIZE);
+          const output = await model(batch.map((chunk) => chunk.text), { pooling: "cls", normalize: true });
           const embeddings = output.tolist();
           for (let i = 0; i < batch.length; i++) {
             if (!isEmbedding(embeddings[i])) throw new Error("Invalid model embedding");
@@ -87,13 +78,25 @@ async function indexBook(job) {
 
 /** @param {WorkerJob & { kind: 'search' }} job */
 async function searchBook(job) {
-  const index = await readIndex(job.indexFile, job.bookId);
+  const index = await indexes.read(job.indexFile, job.bookId);
   if (!index) throw new Error("Book index is not ready");
-  if (!index.chunks.length) return { hits: [] };
+  const planned = planQueries(job.question);
+  if (!index.chunks.length) return { hits: [], queries: planned };
   const model = await getExtractor(job.cacheDir);
-  if (model.tokenizer.encode(job.question).length > MAX_TOKENS) throw new Error("Question exceeds 256 tokens");
-  const output = await model(job.question, { pooling: "mean", normalize: true });
-  return { hits: rankChunks(index, job.question, output.tolist()[0]) };
+  const queries = [], embeddings = [];
+  for (const question of planned) {
+    const input = QUERY_PREFIX + question;
+    if (model.tokenizer.encode(input).length > MODEL_MAX_TOKENS) {
+      if (!queries.length) throw new Error(`Question exceeds ${MODEL_MAX_TOKENS} tokens including its instruction`);
+      continue;
+    }
+    const output = await model(input, { pooling: "cls", normalize: true });
+    const embedding = output.tolist()[0];
+    if (!isEmbedding(embedding)) throw new Error("Invalid query embedding");
+    queries.push(question);
+    embeddings.push(embedding);
+  }
+  return { hits: retrieveEvidence(index, queries, embeddings), queries };
 }
 
 process.on("message", async (job) => {

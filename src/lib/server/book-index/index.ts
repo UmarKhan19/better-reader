@@ -1,8 +1,11 @@
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { bookIndexPaths, isValidPdfId, listPdfs, livePdfPath, publishBookIndex } from "../pdf-store";
-import type { SearchHit } from "./core.mjs";
+import type { EvidenceHit } from "./retrieval.mjs";
 import { BookIndexWorker } from "./worker-client";
+
+export { guardBookAnswer } from "./answer-guard.mjs";
+export type BookEvidence = { bookId: string; question: string; queries: string[]; hits: EvidenceHit[] };
 
 type State = { worker: BookIndexWorker; started: boolean };
 // Route bundles and dev reloads share one queue and model process.
@@ -34,16 +37,22 @@ export function startBookIndexing(): void {
     .catch((error) => console.error("[book-index] Unable to scan library:", error));
 }
 
-/** Server-only retrieval returns evidence, never the full book or vectors. */
-export async function searchBook(id: string, question: string): Promise<SearchHit[]> {
+/** Candidates and citation spans are not semantically verified answers. */
+export async function retrieveBookEvidence(id: string, question: string): Promise<BookEvidence> {
   if (!isValidPdfId(id)) throw new Error("Invalid book ID");
   question = question.trim();
   if (!question || question.length > 2000) throw new Error("Question must contain 1 to 2000 characters");
+  const empty: BookEvidence = { bookId: id, question, queries: [question], hits: [] };
   return state.worker.schedule(async (run) => {
-    if (!await livePdfPath(id)) return [];
+    if (!await livePdfPath(id)) return empty;
     const reply = await run({ kind: "search", bookId: id, question, ...bookIndexPaths(id) });
     // A delete during inference must not return evidence from the trash.
-    if (!await livePdfPath(id)) return [];
-    return reply.kind === "search" ? reply.hits : [];
-  });
+    if (!await livePdfPath(id)) return empty;
+    return reply.kind === "search" ? { bookId: id, question, queries: reply.queries, hits: reply.hits } : empty;
+  }, "interactive");
+}
+
+/** Preserve the original array Interface for passage-search callers. */
+export async function searchBook(id: string, question: string): Promise<EvidenceHit[]> {
+  return (await retrieveBookEvidence(id, question)).hits;
 }

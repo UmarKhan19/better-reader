@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chunkPage, cosineSimilarity, EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, INDEX_VERSION, isBookIndex, isEmbedding, rankChunks } from "./core.mjs";
+import { chunkPage, cosineSimilarity, EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, INDEX_VERSION, isBookIndex, isEmbedding, rankChunks, MODEL_MAX_TOKENS, QUERY_PREFIX } from "./core.mjs";
 
 const countWords = (text) => text.split(/\s+/u).length + 2;
 const vector = (x = 1, y = 0) => [x, y, ...Array(EMBEDDING_DIMENSIONS - 2).fill(0)];
@@ -69,6 +69,15 @@ test("indexes are scoped to one book, model and schema version", () => {
     assert.equal(isBookIndex(bad, "book"), false);
   }
   assert.equal(isBookIndex(valid, "another-book"), false);
+  assert.equal(isBookIndex({ ...valid, version: 1, embeddingModel: "Xenova/all-MiniLM-L6-v2" }, "book"), false);
+  assert.equal(isBookIndex(index([chunk("0", "one"), chunk("0", "another")]), "book"), false);
+  assert.equal(isBookIndex(index([{ ...chunk("0", "text"), id: "" }]), "book"), false);
+});
+
+test("BGE uses its query-only instruction and preserves the existing passage budget", () => {
+  assert.equal(EMBEDDING_MODEL, "Xenova/bge-small-en-v1.5");
+  assert.equal(MODEL_MAX_TOKENS, 512);
+  assert.equal(QUERY_PREFIX, "Represent this sentence for searching relevant passages: ");
 });
 
 test("hybrid ranking uses semantics and whole, case-insensitive keyword matches", () => {
@@ -90,4 +99,19 @@ test("retrieval returns the best ten pieces of evidence, or fewer for short book
   assert.equal(rankChunks(index(Array.from({ length: 20 }, (_, i) => chunk(`${i}`, `passage ${i}`))), "passage", vector()).length, 10);
   assert.deepEqual(rankChunks(index([]), "question", vector()), []);
   assert.throws(() => rankChunks(index([]), "question", [1]), /Invalid query/);
+  const book = index(Array.from({ length: 60 }, (_, i) => chunk(`${i}`, `passage ${i}`)));
+  assert.equal(rankChunks(book, "passage", vector(), 50).length, 50);
+  for (const limit of [0, -1, 1.5, 51, Infinity]) assert.throws(() => rankChunks(book, "passage", vector(), limit), /limit/);
+});
+
+test("reusing an index snapshot preserves cosine/keyword scores and does not leak preparation", () => {
+  const book = index([chunk("0", "dark matter", vector(2, 1)), chunk("1", "other text", vector(0, 3))]);
+  const expected = 0.8 * cosineSimilarity(vector(), book.chunks[0].embedding) + 0.2;
+  const first = rankChunks(book, "dark matter", vector());
+  const second = rankChunks(book, "dark matter", vector());
+  assert.deepEqual(first, second);
+  assert.ok(Math.abs(first[0].score - expected) < 1e-12);
+  assert.deepEqual(Object.keys(first[0]).sort(), ["id", "page", "score", "text"]);
+  const replacement = index([chunk("2", "dark matter", vector(0, 2))]);
+  assert.equal(rankChunks(replacement, "dark matter", vector())[0].id, "2");
 });

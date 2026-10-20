@@ -4,10 +4,15 @@
 /** @typedef {{ bookId: string, version: number, embeddingModel: string, chunks: IndexedChunk[] }} BookIndex */
 /** @typedef {{ id: string, page: number, text: string, score: number }} SearchHit */
 
-export const INDEX_VERSION = 1;
-export const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
+// Bump when pooling, prefixes, token budgets or page-batch grouping change.
+export const INDEX_VERSION = 2;
+export const EMBEDDING_MODEL = "Xenova/bge-small-en-v1.5";
+export const EMBEDDING_REVISION = "ea104dacec62c0de699686887e3f920caeb4f3e3";
 export const EMBEDDING_DIMENSIONS = 384;
 export const MAX_TOKENS = 256;
+export const MODEL_MAX_TOKENS = 512;
+export const QUERY_PREFIX = "Represent this sentence for searching relevant passages: ";
+export const EMBEDDING_BATCH_SIZE = 4;
 
 /** @param {unknown} value @returns {value is number[]} */
 export function isEmbedding(value) {
@@ -21,9 +26,10 @@ export function isBookIndex(value, bookId) {
   if (!value || typeof value !== "object") return false;
   const v = /** @type {BookIndex} */ (value);
   return v.bookId === bookId && v.version === INDEX_VERSION && v.embeddingModel === EMBEDDING_MODEL
-    && Array.isArray(v.chunks) && v.chunks.every((chunk) => chunk && typeof chunk.id === "string"
+    && Array.isArray(v.chunks) && v.chunks.every((chunk) => chunk && typeof chunk.id === "string" && chunk.id.length > 0 && chunk.id.length <= 256
       && Number.isInteger(chunk.page) && chunk.page >= 1
-      && typeof chunk.text === "string" && chunk.text.trim().length > 0 && isEmbedding(chunk.embedding));
+      && typeof chunk.text === "string" && chunk.text.trim().length > 0 && isEmbedding(chunk.embedding))
+    && new Set(v.chunks.map((chunk) => chunk.id)).size === v.chunks.length;
 }
 
 /**
@@ -84,16 +90,30 @@ function keywords(text) {
   return new Set((text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter((word) => !STOP_WORDS.has(word)));
 }
 
-/** @param {BookIndex} index @param {string} question @param {number[]} embedding @returns {SearchHit[]} */
-export function rankChunks(index, question, embedding) {
+/** @type {WeakMap<BookIndex, { chunk: IndexedChunk, terms: Set<string>, norm: number }[]>} */
+const rankingData = new WeakMap();
+
+/** Published index snapshots are immutable; replacing/evicting the snapshot releases its preparation. */
+/** @param {BookIndex} index @param {string} question @param {number[]} embedding @param {number} [limit] @returns {SearchHit[]} */
+export function rankChunks(index, question, embedding, limit = 10) {
   if (!isEmbedding(embedding)) throw new Error("Invalid query embedding");
-  const terms = keywords(question);
-  return index.chunks.map((chunk) => {
-    const words = keywords(chunk.text);
-    const keywordScore = terms.size ? [...terms].filter((term) => words.has(term)).length / terms.size : 0;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new RangeError("Result limit must be between 1 and 50");
+  let prepared = rankingData.get(index);
+  if (!prepared) {
+    prepared = index.chunks.map((chunk) => ({ chunk, terms: keywords(chunk.text), norm: Math.hypot(...chunk.embedding) }));
+    rankingData.set(index, prepared);
+  }
+  const terms = [...keywords(question)];
+  const queryNorm = Math.hypot(...embedding);
+  return prepared.map(({ chunk, terms: words, norm }) => {
+    if (chunk.embedding.length !== embedding.length) throw new Error("Embedding dimensions do not match");
+    let dot = 0;
+    for (let i = 0; i < embedding.length; i++) dot += embedding[i] * chunk.embedding[i];
+    const similarity = norm ? dot / (queryNorm * norm) : 0;
+    const keywordScore = terms.length ? terms.filter((term) => words.has(term)).length / terms.length : 0;
     return {
       id: chunk.id, page: chunk.page, text: chunk.text,
-      score: 0.8 * cosineSimilarity(embedding, chunk.embedding) + 0.2 * keywordScore,
+      score: 0.8 * similarity + 0.2 * keywordScore,
     };
-  }).sort((a, b) => b.score - a.score).slice(0, 10);
+  }).sort((a, b) => b.score - a.score).slice(0, limit);
 }
