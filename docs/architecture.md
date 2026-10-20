@@ -16,7 +16,7 @@ Start with the owner for the behavior being changed. `src/app/` adapts Next.js r
 | `src/lib/browser-storage.ts` | Per-book settings/bookmark keys and browser reads/writes | `readStorage`, `writeStorage` |
 | `src/lib/storage-health.ts` | Per-key save failures and retry notification | External-store subscription |
 | `src/lib/server/pdf-store/` | Original files, metadata, covers, trash and safe index publication | Explicit exports in `index.ts` |
-| `src/lib/server/book-index/` | Background indexing, worker lifecycle and evidence retrieval | `queueBookIndex`, `startBookIndexing`, `searchBook` |
+| `src/lib/server/book-index/` | Background indexing, worker lifecycle, bounded evidence and citation gating | `queueBookIndex`, `startBookIndexing`, `retrieveBookEvidence`, `searchBook`, `guardBookAnswer` |
 | `src/lib/server/http/` | Host validation, file streaming, ranges and HTTP validators | `forbiddenHost`, `serveFile` |
 | `scripts/lib/reader-{launch,cdp,expressions}.mjs` | Browser launch/cleanup, readiness, selectors and check configuration | Shared by checks and benchmark |
 
@@ -39,7 +39,17 @@ Library → mutation hook → library-client → PDF route
 
 The indexer uses only the store's public Interface. `bookIndexPaths()` supplies canonical file coordinates. Only `publishBookIndex()` takes the library mutation lock, checks that the original still exists in the live library, and renames the completed temporary index. Parsing and inference never hold that lock.
 
-The worker runs directly with Node outside Next's bundle. Keep its `.mjs` files and installed dependencies in production deployments. `protocol.mjs` defines and validates IPC messages; `worker-client.ts` owns FIFO ordering, idle process references, progress deadlines and crash recovery. The full job, including publication and temporary-file cleanup, finishes before the next job begins.
+The worker runs directly with Node outside Next's bundle. Keep its `.mjs` files and installed dependencies in production deployments. `protocol.mjs` defines and validates IPC messages; `worker-client.ts` owns priority ordering, idle process references, progress deadlines and crash recovery. Interactive questions precede pending background jobs, with FIFO within each priority and a four-question burst limit when indexing waits. Active jobs are never interrupted. The full job, including publication and temporary-file cleanup, finishes before the next job begins.
+
+The embedding recipe is pinned BGE-small-en-v1.5, CPU q8, CLS pooling and its query-only instruction. Passages retain the 256-token cap and per-page batches of four; prefixed queries have a 512-token cap. `INDEX_VERSION = 2` rejects previous MiniLM indexes. Restart the app to activate the new worker; startup rebuilds outdated indexes through the existing temporary-file publication flow. Source PDFs, browser state and the old model cache are not rewritten or removed.
+
+`index-cache.mjs` retains at most eight parsed books and 32 MiB of serialized index bytes. File device/inode, size, mtime and ctime invalidate snapshots after replacement, deletion or corruption. Oversized indexes remain searchable but uncached. `core.mjs` prepares lexical sets and vector norms once per immutable snapshot; eviction releases that preparation through a weak-key cache.
+
+`retrieval.mjs` plans the whole question plus at most two explicitly coordinated English/Hinglish clauses, interleaves their candidate ranks, and adds bounded neighboring context without aggressive MMR. Results contain at most ten hits, 2,400 characters per hit and 16,000 characters total. `sources` maps exact original page/chunk excerpts into returned-text offsets; `selectedIds` separates direct selections from extra context. Query matches and citation spans do not prove semantic answer support.
+
+`retrieveBookEvidence` returns a book/question-scoped envelope; `searchBook` preserves the array Interface. Both recheck live-library membership after inference, so a deletion must not expose trash evidence. The browser reader still uses its separate literal Search implementation.
+
+`guardBookAnswer` checks proposed claim citations against that envelope, including book/question scope, source IDs, original pages, offsets and exact quotes. It returns no draft answer text and always abstains while semantic verification is unavailable. Parts are explicitly uncited, unverified or invalid. This is a fail-closed citation guard, not an answer generator, entailment model or confidence threshold. No chat UI, provider or credentials are configured.
 
 ## Reading and saved state
 
@@ -92,7 +102,7 @@ The raw index is independent of covers. `catalog.ts` composes index reading and 
 | Rendering, zoom, crop | `reader/viewport/reader-viewport.tsx`, `reader-page-surface.tsx`, `reader-budgeted-raster.tsx`, `reader-tile.tsx`, `reader-crop-canvas.ts`, `reader-raster-budget.ts`, `reader-render-queue.tsx`, `reader-geometry.ts`, `reader-crop.ts` | `bun test src/components/reader/viewport`, then `bun run test:browser -- rendering gestures` |
 | Search | `reader/search/reader-search-text.ts`, `reader-search-controller.ts`, `reader-search-state.ts`, `reader-search-panel.tsx`, `use-reader-search.ts` | `bun test src/components/reader/search`, then `bun run test:browser -- search` |
 | PDF HTTP, streaming | `lib/server/http/host-guard.ts`, `pdf-http.ts`, `serve-file.ts`; `app/api/pdfs/**`; `reader/reader-load-options.ts` | `bun test src/lib/server/http src/app/api/pdfs/routes.test.ts src/components/reader/reader-load-options.test.ts`, then `bun run test:browser -- navigation`; external `bun run test:reader` |
-| Background index | `lib/server/book-index/index.ts`, `worker-client.ts`, `worker.mjs`, `protocol.mjs`; `lib/server/pdf-store/book-index-files.ts`; `instrumentation.ts` | `bun test src/lib/server/book-index src/lib/server/pdf-store`; no browser group (the worker runs outside the app) |
+| Background index and evidence | `lib/server/book-index/index.ts`, `worker-client.ts`, `worker.mjs`, `protocol.mjs`, `core.mjs`, `index-cache.mjs`, `retrieval.mjs`, `answer-guard.mjs`; `lib/server/pdf-store/book-index-files.ts`; `instrumentation.ts` | `bun test src/lib/server/book-index src/lib/server/pdf-store`; isolated build/browser checks for runtime wiring; real-model quality uses the explicit opt-in evaluation below |
 
 ## Invariants
 
@@ -143,6 +153,8 @@ bun run test:browser
 The browser suite needs Node 22+, Chromium and the `agent-browser` CLI. It starts its own production server on a free loopback port with `BETTER_READER_DATA_DIR` pointing to an owned synthetic library. It verifies the fixture PDF's bytes afterward and cleans up its server, data and browser profiles. A prebuilt empty test index prevents model downloads; this suite does not measure embedding quality.
 
 For representative-book measurements, run the external-server checks and benchmark described in the performance guide. Supply `READER_PDF_IDS` explicitly for a benchmark; there are no personal UUID defaults. Real-model inference and physical-device touch/performance remain separate checks.
+
+For opt-in evidence quality checks, see [retrieval-evaluation.md](retrieval-evaluation.md). `bun run eval:retrieval` requires explicit input and scratch output directories, verifies PDF editions against checked-in question fixtures, and indexes/searches through the real worker without publishing into the input library. Model downloads and derived indexes belong to the scratch output. Normal checks remain offline.
 
 ## Documentation and generated files
 
