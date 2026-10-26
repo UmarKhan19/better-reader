@@ -101,11 +101,19 @@ Stop the server before copying this directory for a consistent backup. Expired t
 
 The Next.js and React app serves the library UI and HTTP API. PDF.js renders original documents in the browser through endpoints with byte ranges, ETags, and conditional requests. Filesystem mutations share a process-wide queue, and JSON metadata is published through temporary-file renames.
 
+The main implementation boundaries are:
+
+- `src/components/library/` and `src/components/reader/` own the library and reader interfaces; `src/lib/browser-storage.ts` and `src/lib/reading-progress.ts` keep progress and preferences in browser storage.
+- `src/app/api/pdfs/` adapts upload, library, and file requests; `src/lib/server/pdf-store/` owns PDF bytes, metadata, covers, and trash on disk.
+- `src/lib/server/book-index/` extracts text in a separate Node worker, builds local embeddings, and returns bounded passages with page references. `src/lib/server/http/` owns host checks and PDF byte-range responses.
+
+There is no database service to provision. This is a single-user app without built-in authentication; do not expose it to an untrusted network without adding an authenticated boundary and upload limits.
+
 ### Background text indexing
 
 Uploads and restores queue text extraction and local embeddings in a separate, low-priority Node process. Startup checks existing books for missing, corrupt, or outdated indexes. Reading and uploads do not wait for indexing to finish.
 
-The first text-bearing book downloads the quantized `Xenova/all-MiniLM-L6-v2` model from Hugging Face into `ai/models/`. Inference then runs locally using the cache. Book text and questions are not sent to an external model service.
+The first text-bearing book downloads the pinned `Xenova/bge-small-en-v1.5` model revision in quantized q8 form from Hugging Face into `ai/models/`. Inference then runs locally using the cache. Book text and questions are not sent to an external model service.
 
 This is separate from the reader's literal text search. There is no chat UI or LLM integration. The server-only [`searchBook(id, question)`](./src/lib/server/book-index/index.ts) helper returns up to ten passages with page numbers and scores. Questions are limited to 2,000 characters and 256 model tokens.
 
