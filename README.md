@@ -1,25 +1,9 @@
-<!-- prettier-ignore -->
-<div align="center">
-
-<img src="./public/logo.png" alt="Better Reader logo" width="320" />
-
 # Better Reader
 
-_A self-hosted PDF library that remembers your place._
-
-[![Bun](https://img.shields.io/badge/Bun-1.3.14+-000?style=flat-square&logo=bun)](https://bun.sh)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-3c873a?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=next.js)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-
-[Features](#features) · [Quick start](#quick-start) · [Data and backups](#data-and-backups) · [Development](#development) · [Documentation](#documentation)
-
-</div>
-
-Better Reader is a single-user PDF library for desktop and mobile browsers. Upload PDFs, add cover art, and return to your saved reading position. Files stay on the server's disk and are never rewritten. Reading progress stays in your browser. No database or cloud API key is required.
+A self-hosted, single-user PDF library. Original PDFs stay on the server; reading progress, bookmarks, and reader preferences stay in browser storage. No database or cloud API key is required.
 
 > [!WARNING]
-> There is no login. Anyone who can reach the app can read, upload, or delete PDFs. Keep it on a trusted machine or network, or put it behind an authenticated reverse proxy. The Host guard helps block DNS rebinding; it is not authentication.
+> There is no login or enforced upload byte limit. Anyone who can reach the app can read, upload, or delete PDFs. Keep it on a trusted machine or network, or put it behind an authenticated reverse proxy. The Host guard helps block DNS rebinding; it is not authentication.
 
 ![Better Reader's poster-style library with a featured book and upload controls](./docs/screenshots/library.png)
 
@@ -101,13 +85,21 @@ Stop the server before copying this directory for a consistent backup. Expired t
 
 The Next.js and React app serves the library UI and HTTP API. PDF.js renders original documents in the browser through endpoints with byte ranges, ETags, and conditional requests. Filesystem mutations share a process-wide queue, and JSON metadata is published through temporary-file renames.
 
+The main implementation boundaries are:
+
+- `src/components/library/` and `src/components/reader/` own the library and reader interfaces; `src/lib/browser-storage.ts` and `src/lib/reading-progress.ts` keep progress and preferences in browser storage.
+- `src/app/api/pdfs/` adapts upload, library, and file requests; `src/lib/server/pdf-store/` owns PDF bytes, metadata, covers, and trash on disk.
+- `src/lib/server/book-index/` extracts text in a separate Node worker, builds local embeddings, and returns bounded passages with page references. `src/lib/server/http/` owns host checks and PDF byte-range responses.
+
+There is no database service to provision. This is a single-user app without built-in authentication; do not expose it to an untrusted network without adding an authenticated boundary and upload limits.
+
 ### Background text indexing
 
 Uploads and restores queue text extraction and local embeddings in a separate, low-priority Node process. Startup checks existing books for missing, corrupt, or outdated indexes. Reading and uploads do not wait for indexing to finish.
 
-The first text-bearing book downloads the quantized `Xenova/all-MiniLM-L6-v2` model from Hugging Face into `ai/models/`. Inference then runs locally using the cache. Book text and questions are not sent to an external model service.
+The first text-bearing book downloads the pinned `Xenova/bge-small-en-v1.5` model revision in quantized q8 form from Hugging Face into `ai/models/`. Inference then runs locally using the cache. Book text and questions are not sent to an external model service.
 
-This is separate from the reader's literal text search. There is no chat UI or LLM integration. The server-only [`searchBook(id, question)`](./src/lib/server/book-index/index.ts) helper returns up to ten passages with page numbers and scores. Questions are limited to 2,000 characters and 256 model tokens.
+This is separate from the reader's literal text search. There is no chat UI or LLM integration. The server-only [`searchBook(id, question)`](./src/lib/server/book-index/index.ts) helper returns up to ten passages with page numbers and scores. Questions are limited to 2,000 characters; passages are capped at 256 model tokens, while retrieval queries allow up to 512 tokens including the instruction.
 
 Completed indexes are published atomically. Indexing failures are logged and retried on server startup or book restore; interrupted builds restart from the beginning. A worker crash does not stop reading or uploads.
 
